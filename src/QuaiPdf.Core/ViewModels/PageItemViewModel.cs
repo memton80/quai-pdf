@@ -29,8 +29,13 @@ public sealed partial class PageItemViewModel : ObservableObject
 
     /// <summary>Taille à 100 %, rotation comprise.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(DisplayWidth), nameof(DisplayHeight), nameof(ThumbnailHeight))]
+    [NotifyPropertyChangedFor(nameof(DisplayWidth), nameof(DisplayHeight), nameof(ThumbnailHeight), nameof(BaseWidth), nameof(BaseHeight))]
     public partial PdfPageSize Size { get; set; }
+
+    /// <summary>Largeur à 100 % (repère du surlignage du texte, mis à l'échelle par la vue).</summary>
+    public double BaseWidth => Size.Width;
+
+    public double BaseHeight => Size.Height;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(DisplayWidth), nameof(DisplayHeight))]

@@ -116,3 +116,20 @@ public sealed class FakeFileDialogs : IFileDialogs
         return Task.FromResult(SavePath);
     }
 }
+
+public sealed class FakeClipboard : IClipboard
+{
+    public string? Text { get; private set; }
+
+    public bool Fail { get; set; }
+
+    public void SetText(string text)
+    {
+        if (Fail)
+        {
+            throw new InvalidOperationException("Presse-papiers occupé.");
+        }
+
+        Text = text;
+    }
+}

@@ -41,6 +41,7 @@ public sealed partial class DocumentViewModel : ObservableObject, IDisposable
     private readonly IDialogService _dialogs;
     private readonly IFileDialogs _files;
     private readonly IStrings _strings;
+    private readonly IClipboard _clipboard;
     private readonly ILogger _logger;
     private readonly PdfHistory _history = new();
 
@@ -52,12 +53,14 @@ public sealed partial class DocumentViewModel : ObservableObject, IDisposable
         IDialogService dialogs,
         IFileDialogs files,
         IStrings strings,
+        IClipboard clipboard,
         ILogger<DocumentViewModel>? logger = null)
     {
         _renderer = renderer;
         _dialogs = dialogs;
         _files = files;
         _strings = strings;
+        _clipboard = clipboard;
         _logger = logger ?? NullLogger<DocumentViewModel>.Instance;
         Zoom = 1;
         CurrentPageNumber = 1;
@@ -208,6 +211,7 @@ public sealed partial class DocumentViewModel : ObservableObject, IDisposable
 
     public void Dispose()
     {
+        ResetText();
         Rendered?.Dispose();
         Rendered = null;
     }
@@ -688,6 +692,9 @@ public sealed partial class DocumentViewModel : ObservableObject, IDisposable
         Content = content;
         Rendered = rendered;
 
+        // Le texte sélectionné appartenait à l'ancien contenu (pages tournées, déplacées ou supprimées).
+        ResetText();
+
         var sizes = rendered.Pages;
         while (Pages.Count > sizes.Count)
         {
@@ -719,6 +726,7 @@ public sealed partial class DocumentViewModel : ObservableObject, IDisposable
 
     private void Reset()
     {
+        ResetText();
         _history.Clear();
         Rendered?.Dispose();
         Rendered = null;
@@ -792,6 +800,8 @@ public sealed partial class DocumentViewModel : ObservableObject, IDisposable
         FitWidthCommand.NotifyCanExecuteChanged();
         PreviousPageCommand.NotifyCanExecuteChanged();
         NextPageCommand.NotifyCanExecuteChanged();
+        CopyTextCommand.NotifyCanExecuteChanged();
+        SelectAllTextCommand.NotifyCanExecuteChanged();
         RefreshTargetCommands();
     }
 }

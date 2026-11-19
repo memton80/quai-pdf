@@ -11,11 +11,12 @@ public sealed class DocumentViewModelTests : IDisposable
     private readonly FakeRenderer _renderer = new();
     private readonly FakeDialogs _dialogs = new();
     private readonly FakeFileDialogs _files = new();
+    private readonly FakeClipboard _clipboard = new();
     private readonly DocumentViewModel _document;
 
     public DocumentViewModelTests()
     {
-        _document = new DocumentViewModel(_renderer, _dialogs, _files, new FakeStrings());
+        _document = new DocumentViewModel(_renderer, _dialogs, _files, new FakeStrings(), _clipboard);
     }
 
     public void Dispose()
@@ -67,7 +68,7 @@ public sealed class DocumentViewModelTests : IDisposable
     {
         var path = Write("faux.pdf", "pas un pdf"u8.ToArray());
         var renderer = new ThrowingRenderer();
-        using var document = new DocumentViewModel(renderer, _dialogs, _files, new FakeStrings());
+        using var document = new DocumentViewModel(renderer, _dialogs, _files, new FakeStrings(), _clipboard);
 
         Assert.False(await document.OpenFileAsync(path));
 
@@ -529,6 +530,179 @@ public sealed class DocumentViewModelTests : IDisposable
         Assert.Equal("Error_Unreadable:faux.pdf", Assert.Single(_dialogs.Errors).Message);
         Assert.False(_document.UndoCommand.CanExecute(null));
     }
+
+    // ----- Texte -----
+
+    [Fact]
+    public async Task DragOverText_SelectsAndCopies()
+    {
+        await OpenTextAsync();
+
+        Assert.True(_document.BeginTextSelection(0, SamplePdf.TextPoint(76, 708), extend: false));
+        _document.ExtendTextSelection(0, SamplePdf.TextPoint(250, 708));
+
+        Assert.StartsWith("Bonjour le", _document.SelectedText);
+        Assert.NotEmpty(_document.TextSelectionRects(0));
+        Assert.True(_document.CopyTextCommand.CanExecute(null));
+        await _document.CopyTextCommand.ExecuteAsync(null);
+        Assert.Equal(_document.SelectedText, _clipboard.Text);
+    }
+
+    [Fact]
+    public async Task DragBackwards_SelectsTheSameText()
+    {
+        await OpenTextAsync();
+
+        _document.BeginTextSelection(0, SamplePdf.TextPoint(560, 708), extend: false);
+        _document.ExtendTextSelection(0, SamplePdf.TextPoint(50, 708));
+
+        Assert.Equal("Bonjour le monde", _document.SelectedText);
+    }
+
+    [Fact]
+    public async Task Click_WithoutDragging_ClearsSelection()
+    {
+        await OpenTextAsync();
+        _document.SelectWordAt(0, SamplePdf.TextPoint(78, 708));
+        var changes = 0;
+        _document.TextSelectionChanged += (_, _) => changes++;
+
+        Assert.True(_document.BeginTextSelection(0, SamplePdf.TextPoint(140, 708), extend: false));
+
+        Assert.False(_document.HasTextSelection);
+        Assert.Empty(_document.TextSelectionRects(0));
+        Assert.Equal(string.Empty, _document.SelectedText);
+        Assert.Equal(1, changes);
+        Assert.False(_document.CopyTextCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public async Task DragFromMargin_SelectsFromLineStart()
+    {
+        await OpenTextAsync();
+
+        _document.BeginTextSelection(0, SamplePdf.TextPoint(20, 708), extend: false);
+        _document.ExtendTextSelection(0, SamplePdf.TextPoint(560, 708));
+
+        Assert.Equal("Bonjour le monde", _document.SelectedText);
+    }
+
+    [Fact]
+    public async Task ShiftPress_ExtendsSelection()
+    {
+        await OpenTextAsync();
+        _document.BeginTextSelection(0, SamplePdf.TextPoint(76, 708), extend: false);
+
+        _document.BeginTextSelection(0, SamplePdf.TextPoint(560, 678), extend: true);
+
+        Assert.Equal("Bonjour le monde" + Environment.NewLine + "Deuxieme ligne", _document.SelectedText.ReplaceLineEndings());
+    }
+
+    [Fact]
+    public async Task DoubleClick_SelectsWord()
+    {
+        await OpenTextAsync();
+
+        _document.SelectWordAt(0, SamplePdf.TextPoint(140, 708));
+
+        Assert.Equal("Bonjour", _document.SelectedText);
+    }
+
+    [Fact]
+    public async Task SelectAll_CoversEveryPage()
+    {
+        await OpenTextAsync();
+
+        _document.SelectAllTextCommand.Execute(null);
+
+        var lines = _document.SelectedText.ReplaceLineEndings("\n").Split('\n');
+        Assert.Equal(["Bonjour le monde", "Deuxieme ligne", "Page deux"], lines);
+        Assert.NotEmpty(_document.TextSelectionRects(1));
+    }
+
+    [Fact]
+    public async Task SelectionAcrossPages_TakesEndOfFirstAndStartOfSecond()
+    {
+        await OpenTextAsync();
+
+        _document.BeginTextSelection(0, SamplePdf.TextPoint(76, 678), extend: false);
+        _document.ExtendTextSelection(1, SamplePdf.TextPoint(98, 708));
+
+        Assert.Equal("Deuxieme ligne" + Environment.NewLine + "Pa", _document.SelectedText.ReplaceLineEndings());
+    }
+
+    [Fact]
+    public async Task Edit_ClearsSelection()
+    {
+        await OpenTextAsync();
+        _document.SelectAllTextCommand.Execute(null);
+
+        await _document.RotateRightCommand.ExecuteAsync(null);
+
+        Assert.False(_document.HasTextSelection);
+        _document.SelectWordAt(0, new QuaiPdf.Core.Pdf.Text.PdfPoint(708 * 4.0 / 3, 140 * 4.0 / 3));
+        Assert.Equal("Bonjour", _document.SelectedText);
+    }
+
+    [Fact]
+    public async Task PageWithoutText_SelectsNothing()
+    {
+        await OpenSampleAsync(1);
+
+        Assert.False(_document.BeginTextSelection(0, new QuaiPdf.Core.Pdf.Text.PdfPoint(20, 20), extend: false));
+        _document.SelectAllTextCommand.Execute(null);
+
+        Assert.False(_document.HasTextSelection);
+    }
+
+    [Fact]
+    public async Task CopyForbiddenByAuthor_ShowsMessage()
+    {
+        await _document.OpenFileAsync(Write("interdit.pdf", SamplePdf.CreateWithText(ownerPassword: "proprio", permitCopy: false, pages: [["Secret"]])));
+        _document.SelectAllTextCommand.Execute(null);
+
+        await _document.CopyTextCommand.ExecuteAsync(null);
+
+        Assert.Null(_clipboard.Text);
+        Assert.Equal("Error_CopyForbidden", Assert.Single(_dialogs.Errors).Message);
+    }
+
+    [Fact]
+    public async Task ClipboardBusy_ShowsMessage()
+    {
+        await OpenTextAsync();
+        _document.SelectAllTextCommand.Execute(null);
+        _clipboard.Fail = true;
+
+        await _document.CopyTextCommand.ExecuteAsync(null);
+
+        Assert.Equal("Error_Clipboard", Assert.Single(_dialogs.Errors).Message);
+    }
+
+    [Fact]
+    public async Task PasswordProtectedDocument_TextUsesThePassword()
+    {
+        _renderer.RequiredPassword = "bon";
+        _dialogs.Passwords.Enqueue("bon");
+        await _document.OpenFileAsync(Write("secret.pdf", SamplePdf.Create(1, userPassword: "bon", ownerPassword: "proprio")));
+
+        Assert.NotNull(_document.TextPage(0));
+    }
+
+    [Fact]
+    public async Task CloseDocument_ForgetsSelection()
+    {
+        await OpenTextAsync();
+        _document.SelectAllTextCommand.Execute(null);
+
+        await _document.CloseDocumentCommand.ExecuteAsync(null);
+
+        Assert.False(_document.HasTextSelection);
+        Assert.Null(_document.TextPage(0));
+    }
+
+    private Task<bool> OpenTextAsync() =>
+        _document.OpenFileAsync(Write("texte.pdf", SamplePdf.CreateWithText(pages: [["Bonjour le monde", "Deuxieme ligne"], ["Page deux"]])));
 
     private async Task<string> OpenSampleAsync(int pages)
     {

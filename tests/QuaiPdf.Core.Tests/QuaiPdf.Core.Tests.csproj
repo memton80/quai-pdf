@@ -10,6 +10,8 @@
 
   <ItemGroup>
     <PackageReference Include="xunit.v3" />
+    <!-- PDFium natif pour lancer les tests du texte sous Linux (le paquet Windows vient de QuaiPdf.Core). -->
+    <PackageReference Include="bblanchon.PDFium.Linux" />
   </ItemGroup>
 
   <ItemGroup>
