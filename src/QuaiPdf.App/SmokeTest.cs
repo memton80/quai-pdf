@@ -178,12 +178,18 @@ internal static class SmokeTest
 
     private static async Task<T> WithTimeout<T>(Task<T> task, string step)
     {
+        await WithTimeout((Task)task, step);
+        return await task;
+    }
+
+    private static async Task WithTimeout(Task task, string step)
+    {
         if (await Task.WhenAny(task, Task.Delay(StepTimeout)) != task)
         {
             throw new TimeoutException($"Étape « {step} » sans réponse après {StepTimeout.TotalSeconds} s.");
         }
 
-        return await task;
+        await task;
     }
 
     private static async Task WaitForAsync(Func<bool> condition, string step)
