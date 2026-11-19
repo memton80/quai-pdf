@@ -1,0 +1,372 @@
+name: Build
+
+on:
+  push:
+    # Toutes les branches (seule main publie une release, voir le job « version »).
+    branches: ['**']
+    # Tag poussé à la main.
+    tags: ['v*', 'V*']
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'QuaiPdf.sln'
+      - 'Directory.*'
+      - 'global.json'
+      - 'installer/**'
+      - '.github/workflows/build.yml'
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'QuaiPdf.sln'
+      - 'Directory.*'
+      - 'global.json'
+      - 'installer/**'
+      - '.github/workflows/build.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  # Version de la construction et décision de publier (même règle que Quai).
+  # La version se prépare dans Directory.Build.props (<Version>X.Y.Z</Version>). Quand elle arrive sur main sans
+  # tag correspondant, ce run la construit, puis le job « release » crée le tag vX.Y.Z et publie la release.
+  version:
+    name: Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+      release: ${{ steps.version.outputs.release }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Version et publication
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          prepared=$(grep -oPm1 '(?<=<Version>)[^<]+' Directory.Build.props || true)
+          if ! [[ "$prepared" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error file=Directory.Build.props::<Version> doit être de la forme X.Y.Z (trouvé : « $prepared »)."
+            exit 1
+          fi
+
+          tags=$(git ls-remote --tags origin)
+          if grep -qiE "refs/tags/v${prepared//./\\.}$" <<<"$tags"; then tagged=true; else tagged=false; fi
+
+          case "$GITHUB_REF" in
+            refs/tags/[vV]*)
+              version="${GITHUB_REF_NAME:1}"; tag="$GITHUB_REF_NAME"; release=true ;;
+            refs/heads/main)
+              if [ "$tagged" = false ]; then
+                version="$prepared"; tag="v$prepared"; release=true
+              else
+                version="0.0.0-ci.$GITHUB_RUN_NUMBER"; tag=""; release=false
+              fi ;;
+            *)
+              version="0.0.0-ci.$GITHUB_RUN_NUMBER"; tag=""; release=false ;;
+          esac
+
+          {
+            echo "version=$version"
+            echo "tag=$tag"
+            echo "release=$release"
+          } >> "$GITHUB_OUTPUT"
+          {
+            echo "Version préparée (Directory.Build.props) : **$prepared** — tag v$prepared déjà présent : **$tagged**"
+            echo
+            echo "Construction : **$version** — publication : **$release** ${tag:+(tag $tag)}"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "Version préparée $prepared (tag présent : $tagged) ; construction $version ; publication : $release"
+
+  build:
+    needs: version
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [x64, arm64]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          # .NET 10 = dernière LTS, prise en charge par le Windows App SDK 2.x (voir docs/DECISIONS.md).
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore QuaiPdf.sln
+
+      - name: Tests (QuaiPdf.Core)
+        if: matrix.platform == 'x64'
+        run: dotnet test --project tests/QuaiPdf.Core.Tests/QuaiPdf.Core.Tests.csproj -c Release
+
+      - name: Publish
+        shell: pwsh
+        run: |
+          dotnet publish src/QuaiPdf.App/QuaiPdf.App.csproj `
+            -c Release `
+            -r win-${{ matrix.platform }} `
+            --self-contained true `
+            -p:Platform=${{ matrix.platform }} `
+            -p:WindowsPackageType=None `
+            -p:Version=${{ needs.version.outputs.version }} `
+            -o publish/${{ matrix.platform }}
+          if ($LASTEXITCODE -ne 0) { throw "La publication a échoué (code $LASTEXITCODE)." }
+
+      - name: Vérification du contenu publié
+        shell: pwsh
+        run: |
+          $dir = "publish/${{ matrix.platform }}"
+          Get-ChildItem $dir | Sort-Object Name | Format-Table Name, Length -AutoSize | Out-String -Width 200
+          $required = @(
+            'QuaiPdf.exe', 'QuaiPdf.dll', 'QuaiPdf.Core.dll', 'QuaiPdf.pri', 'Microsoft.WinUI.dll', 'PdfSharp.dll',
+            'Assets/QuaiPdf.ico', 'Assets/AppIcon.png', 'fr-FR/Microsoft.ui.xaml.dll.mui', 'en-US/Microsoft.ui.xaml.dll.mui')
+          $missing = $required | Where-Object { -not (Test-Path (Join-Path $dir $_)) }
+          if ($missing) { throw "Fichiers manquants dans la publication : $($missing -join ', ')" }
+
+          # Aucune application web cachée : ni WebView2 ni page HTML. Allègement repris de Quai : ni IA / ML /
+          # recherche / widgets du Windows App SDK, ni outils de diagnostic du runtime, ni langues autres que fr / en.
+          $forbidden = @(
+            'Microsoft.Web.WebView2.Core.dll', 'WebView2Loader.dll', 'Microsoft.UI.Xaml/Assets/map.html',
+            'onnxruntime.dll', 'DirectML.dll', 'Microsoft.Windows.AI.Text.dll', 'Microsoft.Windows.Search.dll', 'Microsoft.Windows.Widgets.dll', 'DWriteCore.dll',
+            'PresentationFramework.dll', 'createdump.exe', 'mscordbi.dll', 'mscordaccore.dll', 'de-DE', 'ja-JP') |
+            Where-Object { Test-Path (Join-Path $dir $_) }
+          $html = Get-ChildItem $dir -Recurse -File -Include '*.html', '*.htm', '*.js' | Select-Object -First 5
+          if ($html) { $forbidden += $html.FullName }
+          if ($forbidden) { throw "Fichiers inattendus dans la publication : $($forbidden -join ', ')" }
+
+      - name: Zip (version portable)
+        shell: pwsh
+        run: 7z a -tzip -mx=9 "QuaiPdf-${{ matrix.platform }}.zip" "./publish/${{ matrix.platform }}/*"
+
+      - name: Installateur (Inno Setup)
+        shell: pwsh
+        run: |
+          $iscc = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'
+          if (-not (Test-Path $iscc)) {
+            choco install innosetup --no-progress -y | Out-Host
+          }
+          if (-not (Test-Path $iscc)) { throw 'ISCC.exe (Inno Setup) introuvable.' }
+
+          $version = '${{ needs.version.outputs.version }}'
+          $numeric = ($version -split '-')[0]
+          $source = (Resolve-Path 'publish/${{ matrix.platform }}').Path
+          & $iscc /Qp "/DAppVersion=$version" "/DAppNumericVersion=$numeric" "/DArch=${{ matrix.platform }}" "/DSourceDir=$source" "/DOutputDir=$PWD" installer/QuaiPdf.iss
+          if ($LASTEXITCODE -ne 0) { throw "La compilation de l'installateur a échoué (code $LASTEXITCODE)." }
+          Get-Item 'QuaiPdf-Setup-${{ matrix.platform }}.exe', 'QuaiPdf-${{ matrix.platform }}.zip' |
+            Select-Object Name, @{ n = 'Mo'; e = { [math]::Round($_.Length / 1MB, 1) } } | Format-Table -AutoSize | Out-String
+
+      - name: Rapport de taille
+        shell: pwsh
+        run: |
+          $arch = '${{ matrix.platform }}'
+          $files = Get-ChildItem "publish/$arch" -Recurse -File
+          $mb = { param($bytes) '{0:N1}' -f ($bytes / 1MB) }
+          $installed = ($files | Measure-Object Length -Sum).Sum
+          $setup = (Get-Item "QuaiPdf-Setup-$arch.exe").Length
+          $zip = (Get-Item "QuaiPdf-$arch.zip").Length
+          @(
+            "### Taille ($arch)"
+            ''
+            '| | Mo |'
+            '|---|---:|'
+            "| Installée ($($files.Count) fichiers) | $(& $mb $installed) |"
+            "| Installateur | $(& $mb $setup) |"
+            "| Zip | $(& $mb $zip) |"
+            ''
+          ) | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
+          "Installée : $(& $mb $installed) Mo ($($files.Count) fichiers) — installateur : $(& $mb $setup) Mo — zip : $(& $mb $zip) Mo"
+
+      - name: Installation silencieuse
+        if: matrix.platform == 'x64'
+        shell: pwsh
+        run: |
+          $log = Join-Path $env:RUNNER_TEMP 'install.log'
+          $setup = (Resolve-Path 'QuaiPdf-Setup-x64.exe').Path
+          $process = Start-Process -FilePath $setup -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', "/LOG=`"$log`"" -PassThru -Wait
+          if ($process.ExitCode -ne 0) {
+            if (Test-Path $log) { Get-Content $log -Tail 60 }
+            throw "Installation en échec (code $($process.ExitCode))."
+          }
+
+          $dir = Join-Path $env:LOCALAPPDATA 'Programs\Quai PDF'
+          $missing = 'QuaiPdf.exe', 'unins000.exe', 'QuaiPdf.pri', 'PdfSharp.dll' | Where-Object { -not (Test-Path (Join-Path $dir $_)) }
+          if ($missing) { throw "Fichiers installés manquants : $($missing -join ', ')" }
+
+          $key = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{881A2EB2-5817-4B9E-AA96-BEBBED0A8E2E}_is1'
+          if (-not (Test-Path $key)) { throw "Entrée de désinstallation absente du registre." }
+          Get-ItemProperty $key | Select-Object DisplayName, DisplayVersion, InstallLocation, UninstallString | Format-List | Out-String
+
+          # « Ouvrir avec » : Quai PDF proposé pour les .pdf.
+          $command = (Get-ItemProperty 'HKCU:\Software\Classes\QuaiPdf.Document\shell\open\command').'(default)'
+          if ($command -notlike "*QuaiPdf.exe*%1*") { throw "Commande d'ouverture inattendue : $command" }
+          $openWith = Get-ItemProperty 'HKCU:\Software\Classes\.pdf\OpenWithProgids' -ErrorAction SilentlyContinue
+          if (-not ($openWith.PSObject.Properties.Name -contains 'QuaiPdf.Document')) { throw "Quai PDF absent de « Ouvrir avec » pour les .pdf." }
+
+          $shortcut = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Quai PDF.lnk'
+          if (-not (Test-Path $shortcut)) { throw 'Raccourci du menu Démarrer absent.' }
+          "QUAI_PDF_INSTALL_DIR=$dir" >> $env:GITHUB_ENV
+
+      - name: Test de fumée (application installée, lancement réel)
+        if: matrix.platform == 'x64'
+        shell: pwsh
+        run: |
+          $out = Join-Path $env:RUNNER_TEMP 'smoke'
+          $exe = Join-Path $env:QUAI_PDF_INSTALL_DIR 'QuaiPdf.exe'
+          $process = Start-Process -FilePath $exe -ArgumentList '--smoke-test', "`"$out`"" -PassThru
+          $null = $process.Handle
+          if (-not $process.WaitForExit(240000)) {
+            $process.Kill()
+            Write-Host "::error::Le test de fumée n'a pas rendu la main en 240 s."
+            $failed = $true
+          } elseif ($process.ExitCode -ne 0) {
+            Write-Host "::error::Le test de fumée a échoué (code $($process.ExitCode))."
+            $failed = $true
+          }
+          if (Test-Path $out) { Get-ChildItem $out -File | Format-Table Name, Length -AutoSize | Out-String }
+          if (Test-Path (Join-Path $out 'smoke-report.txt')) {
+            Get-Content (Join-Path $out 'smoke-report.txt')
+            @('### Test de fumée', '', '```') + (Get-Content (Join-Path $out 'smoke-report.txt')) + @('```', '') |
+              Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
+          }
+          if ($failed -or -not (Test-Path (Join-Path $out 'smoke-ok.txt'))) {
+            if (Test-Path (Join-Path $out 'smoke-error.txt')) { Get-Content (Join-Path $out 'smoke-error.txt') }
+            Get-ChildItem (Join-Path $out 'data/logs') -ErrorAction SilentlyContinue | ForEach-Object { Get-Content $_.FullName -Tail 80 }
+            Get-WinEvent -LogName Application -MaxEvents 40 -ErrorAction SilentlyContinue |
+              Where-Object { $_.ProviderName -in '.NET Runtime', 'Application Error', 'Windows Error Reporting' } |
+              Select-Object -First 6 | ForEach-Object { $_.Message }
+            throw 'Test de fumée en échec.'
+          }
+
+      - name: Captures du test de fumée
+        if: always() && matrix.platform == 'x64'
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-captures
+          path: |
+            ${{ runner.temp }}/smoke/*.png
+            ${{ runner.temp }}/smoke/*.txt
+            ${{ runner.temp }}/smoke/*.pdf
+            ${{ runner.temp }}/smoke/data/logs/*.log
+            ${{ runner.temp }}/install.log
+          if-no-files-found: ignore
+
+      - name: Désinstallation silencieuse (avec effacement des données)
+        if: matrix.platform == 'x64'
+        shell: pwsh
+        run: |
+          $dir = $env:QUAI_PDF_INSTALL_DIR
+          $data = Join-Path $env:LOCALAPPDATA 'QuaiPdf'
+
+          # Données factices : elles doivent disparaître avec /PURGE=1.
+          New-Item -ItemType Directory -Force -Path (Join-Path $data 'logs') | Out-Null
+          Set-Content -Path (Join-Path $data 'settings.json') -Value '{ "theme": "dark" }'
+
+          $uninstall = Start-Process -FilePath (Join-Path $dir 'unins000.exe') -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/PURGE=1' -PassThru -Wait
+          if ($uninstall.ExitCode -ne 0) { throw "Désinstallation en échec (code $($uninstall.ExitCode))." }
+
+          # Le désinstallateur termine son nettoyage depuis une copie temporaire : on laisse quelques secondes.
+          $deadline = (Get-Date).AddSeconds(60)
+          while ((Test-Path $dir) -and (Get-Date) -lt $deadline) { Start-Sleep -Seconds 1 }
+
+          $left = @()
+          if (Test-Path $dir) { $left += "dossier d'installation ($((Get-ChildItem $dir -Recurse -File | Select-Object -First 5).FullName -join ', '))" }
+          if (Test-Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{881A2EB2-5817-4B9E-AA96-BEBBED0A8E2E}_is1') { $left += 'entrée de désinstallation' }
+          if (Test-Path 'HKCU:\Software\Classes\QuaiPdf.Document') { $left += 'type de document QuaiPdf.Document' }
+          if (Test-Path 'HKCU:\Software\Classes\Applications\QuaiPdf.exe') { $left += 'entrée Applications\QuaiPdf.exe' }
+          $openWith = Get-ItemProperty 'HKCU:\Software\Classes\.pdf\OpenWithProgids' -ErrorAction SilentlyContinue
+          if ($openWith -and ($openWith.PSObject.Properties.Name -contains 'QuaiPdf.Document')) { $left += '« Ouvrir avec » pour les .pdf' }
+          if (Test-Path (Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Quai PDF.lnk')) { $left += 'raccourci du menu Démarrer' }
+          if (Test-Path $data) { $left += 'données utilisateur' }
+          if ($left) { throw "La désinstallation a laissé : $($left -join ' ; ')" }
+          Write-Host 'Désinstallation complète : aucun fichier, raccourci ni entrée de registre restant.'
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: QuaiPdf-${{ matrix.platform }}
+          path: |
+            QuaiPdf-${{ matrix.platform }}.zip
+            QuaiPdf-Setup-${{ matrix.platform }}.exe
+          if-no-files-found: error
+
+  # Crée le tag (s'il n'existe pas encore) et la release, une fois tout vert.
+  release:
+    if: needs.version.outputs.release == 'true'
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      # Clé de l'API publique (gratuite) de VirusTotal, dans les secrets du dépôt. Sans elle, l'analyse est sautée.
+      VT_API_KEY: ${{ secrets.VT_API_KEY }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: QuaiPdf-*
+          path: dist
+          merge-multiple: true
+
+      - name: VirusTotal
+        id: virustotal
+        if: env.VT_API_KEY != ''
+        continue-on-error: true
+        uses: crazy-max/ghaction-virustotal@v5
+        with:
+          vt_api_key: ${{ env.VT_API_KEY }}
+          request_rate: 4
+          files: |
+            dist/*.exe
+            dist/*.zip
+
+      - name: Notes de la release (empreintes, analyses VirusTotal)
+        id: notes
+        shell: bash
+        env:
+          SCANNED: ${{ steps.virustotal.outcome == 'success' }}
+        run: |
+          set -euo pipefail
+          {
+            echo 'body<<QUAI_PDF_NOTES_EOF'
+            echo '### Fichiers'
+            echo
+            if [ "$SCANNED" = true ]; then
+              echo '| Fichier | SHA-256 | VirusTotal |'
+              echo '|---|---|---|'
+            else
+              echo '| Fichier | SHA-256 |'
+              echo '|---|---|'
+            fi
+            for file in dist/*.exe dist/*.zip; do
+              hash=$(sha256sum "$file" | cut -d' ' -f1)
+              name=$(basename "$file")
+              if [ "$SCANNED" = true ]; then
+                echo "| \`$name\` | \`$hash\` | [analyse](https://www.virustotal.com/gui/file/$hash) |"
+              else
+                echo "| \`$name\` | \`$hash\` |"
+              fi
+            done
+            echo
+            echo 'QUAI_PDF_NOTES_EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.version.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: Quai PDF ${{ needs.version.outputs.version }}
+          body: ${{ steps.notes.outputs.body }}
+          files: |
+            dist/*.exe
+            dist/*.zip
+          generate_release_notes: true

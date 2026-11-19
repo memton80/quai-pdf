@@ -1,0 +1,28 @@
+name: Signaler un bug
+description: Quelque chose ne marche pas comme prévu dans Quai PDF.
+labels: ["bug"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Ce qui s'est passé, et ce que vous attendiez
+      description: Message d'erreur, comportement inattendu…
+    validations:
+      required: true
+  - type: textarea
+    id: etapes
+    attributes:
+      label: Comment le reproduire
+      placeholder: |
+        1. …
+        2. …
+  - type: textarea
+    id: systeme
+    attributes:
+      label: Version de Quai PDF et de Windows
+      render: text
+  - type: markdown
+    attributes:
+      value: |
+        Pour aider au diagnostic, vous pouvez glisser le journal du jour (`%LOCALAPPDATA%\QuaiPdf\logs`) dans un des champs ci-dessus.
+        Relisez-le avant : il contient les noms des fichiers ouverts (jamais leur contenu ni de mot de passe).
