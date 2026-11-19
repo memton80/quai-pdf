@@ -14,6 +14,8 @@
   · Gratuit · Sans compte · Sans publicité
 </p>
 
+![Quai PDF : les vignettes à gauche, la page à droite ; la première page vient d'être pivotée](docs/images/document.png)
+
 ## Ce que fait Quai PDF
 
 - **Lire.** Les pages défilent, avec les vignettes à gauche, le zoom (`Ctrl+molette`, `Ctrl+Plus`, `Ctrl+Moins`) et l'ajustement à la largeur.
@@ -31,6 +33,8 @@ Quai PDF est une application Windows native (WinUI 3) : **aucune page web, aucun
 
 - Les documents protégés par un mot de passe s'ouvrent en **lecture seule** : leur protection n'est jamais retirée sans que vous le sachiez. Le mot de passe n'est jamais enregistré.
 - **Aucune publicité, aucun pistage, aucun compte à créer.** Quai PDF ne se connecte à rien.
+
+![Quai PDF en thème sombre : les pages restent blanches, comme le papier](docs/images/sombre.png)
 
 ## Installer Quai PDF
 
