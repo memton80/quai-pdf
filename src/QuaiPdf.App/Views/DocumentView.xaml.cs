@@ -117,6 +117,19 @@ public sealed partial class DocumentView : UserControl
     /// <summary>Nouveau contenu : pages redessinées, sélection et position rétablies.</summary>
     private void OnContentChanged(object? sender, DocumentChangedEventArgs e)
     {
+        // Un souci d'affichage (sélection, défilement) ne doit jamais faire échouer l'ouverture ou la modification.
+        try
+        {
+            ShowChange(e);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Mise à jour de l'affichage incomplète");
+        }
+    }
+
+    private void ShowChange(DocumentChangedEventArgs e)
+    {
         _syncingSelection = true;
         try
         {
@@ -160,11 +173,19 @@ public sealed partial class DocumentView : UserControl
             return;
         }
 
-        _scrollingToPage = true;
-        PagesRepeater.UpdateLayout();
-        var element = PagesRepeater.GetOrCreateElement(index);
-        element.UpdateLayout();
-        element.StartBringIntoView(new BringIntoViewOptions { AnimationDesired = false, VerticalAlignmentRatio = 0 });
+        try
+        {
+            _scrollingToPage = true;
+            PagesRepeater.UpdateLayout();
+            var element = PagesRepeater.GetOrCreateElement(index);
+            element.UpdateLayout();
+            element.StartBringIntoView(new BringIntoViewOptions { AnimationDesired = false, VerticalAlignmentRatio = 0 });
+        }
+        catch (Exception ex)
+        {
+            _scrollingToPage = false;
+            _logger.LogWarning(ex, "Défilement jusqu'à la page {Page} impossible", index + 1);
+        }
     }
 
     private void OnScrollerViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)
