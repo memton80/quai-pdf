@@ -94,7 +94,7 @@ public sealed partial class DocumentViewModel : ObservableObject, IDisposable
         : AppInfo.DisplayName;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(WindowTitle), nameof(CanEdit), nameof(IsEmpty))]
+    [NotifyPropertyChangedFor(nameof(WindowTitle), nameof(CanEdit), nameof(IsEmpty), nameof(IsReadOnly), nameof(ReadOnlyMessage))]
     public partial bool HasDocument { get; private set; }
 
     public bool IsEmpty => !HasDocument;

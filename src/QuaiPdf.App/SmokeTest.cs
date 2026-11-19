@@ -70,6 +70,8 @@ internal static class SmokeTest
                     $"page {i + 1} : taille Windows {Describe(shown)} au lieu de {Describe(expected[i])}");
             }
 
+            Check(window.View.ShownPageNumber == 1, $"numéro de page affiché : {window.View.ShownPageNumber} au lieu de 1");
+            Check(!window.View.ReadOnlyBannerShown, "bandeau « Lecture seule » sur un document modifiable");
             report.Add("Tailles des pages (Windows) : " + string.Join(" ; ", document.Pages.Select(p => Describe(p.Size))));
 
             // Images des pages : dessinées par le moteur PDF de Windows.
@@ -133,6 +135,8 @@ internal static class SmokeTest
             Check(await WithTimeout(document.OpenFileAsync(restricted), "ouverture du document protégé"), "ouverture du document protégé");
             Check(document.Editability == PdfEditability.Protected, $"document protégé en lecture seule ({document.Editability})");
             Check(!document.RotateRightCommand.CanExecute(null), "rotation désactivée en lecture seule");
+            Check(window.View.ReadOnlyBannerShown, "bandeau « Lecture seule » affiché");
+            Check(window.View.ShownPageNumber == 1, $"numéro de page affiché : {window.View.ShownPageNumber} au lieu de 1");
             await Task.Delay(1000);
             await CaptureAsync(hwnd, directory, "6-lecture-seule.png", report);
 

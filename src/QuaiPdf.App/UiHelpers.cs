@@ -14,6 +14,9 @@ public static class UiHelpers
     /// <summary>Un entier pour une propriété <see cref="double"/> (<c>NumberBox.Value</c>).</summary>
     public static double ToDouble(int value) => value;
 
+    /// <summary>Plus grand numéro de page saisissable : jamais 0, sinon la case ramènerait la page affichée à 0.</summary>
+    public static double PageMaximum(int count) => Math.Max(1, count);
+
     /// <summary>« / 12 » à côté du numéro de page.</summary>
     public static string PageCountText(int count) => Loc.Format("Toolbar_PageCount", count);
 

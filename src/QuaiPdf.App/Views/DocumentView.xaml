@@ -124,7 +124,7 @@
                         x:Name="PageBox"
                         AutomationProperties.Name="{l:Str Key=Toolbar_PageNumber}"
                         IsEnabled="{x:Bind ViewModel.HasDocument, Mode=OneWay}"
-                        Maximum="{x:Bind ui:UiHelpers.ToDouble(ViewModel.PageCount), Mode=OneWay}"
+                        Maximum="{x:Bind ui:UiHelpers.PageMaximum(ViewModel.PageCount), Mode=OneWay}"
                         Style="{StaticResource PageNumberBoxStyle}"
                         ValueChanged="OnPageBoxValueChanged"
                         Value="{x:Bind ui:UiHelpers.ToDouble(ViewModel.CurrentPageNumber), Mode=OneWay}" />
@@ -236,6 +236,7 @@
                 Style="{StaticResource BusyBarStyle}"
                 Visibility="{x:Bind ui:UiHelpers.VisibleIf(ViewModel.IsBusy), Mode=OneWay}" />
             <InfoBar
+                x:Name="ReadOnlyBar"
                 IsOpen="{x:Bind ViewModel.IsReadOnly, Mode=OneWay}"
                 Message="{x:Bind ViewModel.ReadOnlyMessage, Mode=OneWay}"
                 Severity="Informational"

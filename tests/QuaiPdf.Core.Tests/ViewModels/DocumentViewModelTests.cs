@@ -115,6 +115,21 @@ public sealed class DocumentViewModelTests : IDisposable
     }
 
     [Fact]
+    public async Task Open_ReadOnly_AnnouncesBannerToTheView()
+    {
+        var announced = new List<string?>();
+        _document.PropertyChanged += (_, e) => announced.Add(e.PropertyName);
+
+        await _document.OpenFileAsync(Write("restreint.pdf", SamplePdf.Create(1, ownerPassword: "proprio")));
+
+        // La vue lit IsReadOnly et ReadOnlyMessage à chaque annonce : la dernière doit suivre l'ouverture.
+        Assert.True(_document.IsReadOnly);
+        var hasDocument = announced.LastIndexOf(nameof(DocumentViewModel.HasDocument));
+        Assert.True(announced.LastIndexOf(nameof(DocumentViewModel.IsReadOnly)) > hasDocument);
+        Assert.True(announced.LastIndexOf(nameof(DocumentViewModel.ReadOnlyMessage)) > hasDocument);
+    }
+
+    [Fact]
     public async Task Open_OwnerRestricted_IsReadOnly()
     {
         await _document.OpenFileAsync(Write("restreint.pdf", SamplePdf.Create(2, ownerPassword: "proprio")));

@@ -76,6 +76,12 @@ public sealed partial class DocumentView : UserControl
 
     private DialogService Dialogs { get; }
 
+    /// <summary>Numéro affiché dans la barre d'outils (test de fumée).</summary>
+    internal int ShownPageNumber => (int)Math.Round(PageBox.Value);
+
+    /// <summary>Bandeau « Lecture seule » visible (test de fumée).</summary>
+    internal bool ReadOnlyBannerShown => ReadOnlyBar.IsOpen && ReadOnlyBar.Visibility == Visibility.Visible;
+
     /// <summary>Nombre de pages dessinées à l'écran (test de fumée).</summary>
     internal int RenderedPageCount => _realized.Keys.Count(e => e is Border { Child: Image { Source: not null } });
 
@@ -248,6 +254,12 @@ public sealed partial class DocumentView : UserControl
         if (number != ViewModel.CurrentPageNumber)
         {
             ViewModel.GoToPage(number);
+        }
+
+        // Numéro hors du document (ou aucun document) : la case reprend la page affichée.
+        if ((int)Math.Round(sender.Value) != ViewModel.CurrentPageNumber)
+        {
+            sender.Value = ViewModel.CurrentPageNumber;
         }
     }
 
