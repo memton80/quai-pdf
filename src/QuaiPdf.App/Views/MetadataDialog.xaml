@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentDialog
+    x:Class="QuaiPdf.App.Views.MetadataDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:l="using:QuaiPdf.App.Localization"
+    Title="{l:Str Key=Metadata_Title}"
+    CloseButtonText="{l:Str Key=Common_Cancel}"
+    DefaultButton="Primary"
+    PrimaryButtonText="{l:Str Key=Metadata_Apply}">
+
+    <StackPanel Style="{StaticResource DialogFormStyle}">
+        <TextBox Header="{l:Str Key=Metadata_DocumentTitle}" Text="{x:Bind Editor.Title, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+        <TextBox Header="{l:Str Key=Metadata_Author}" Text="{x:Bind Editor.Author, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+        <TextBox Header="{l:Str Key=Metadata_Subject}" Text="{x:Bind Editor.Subject, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+        <TextBox Header="{l:Str Key=Metadata_Keywords}" Text="{x:Bind Editor.Keywords, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+        <TextBlock Style="{StaticResource DialogHintStyle}" Text="{l:Str Key=Metadata_Hint}" />
+    </StackPanel>
+</ContentDialog>

@@ -1,0 +1,144 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RootNamespace>QuaiPdf.App</RootNamespace>
+    <AssemblyName>QuaiPdf</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\QuaiPdf.ico</ApplicationIcon>
+    <Platforms>x64;ARM64</Platforms>
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+    <UseWinUI>true</UseWinUI>
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <DefaultLanguage>fr-FR</DefaultLanguage>
+
+    <!-- Application non packagée (pas de MSIX), runtime .NET et Windows App SDK embarqués. -->
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>false</PublishSingleFile>
+
+    <!--
+      Réduction à la publication (trimming), comme Quai : le code .NET jamais appelé est retiré des bibliothèques
+      déclarées compatibles. Mode « partial » : les bibliothèques non déclarées compatibles (PDFsharp, Community
+      Toolkit) restent entières. Restent entières aussi l'interop WinRT et le cœur du runtime (cible
+      QuaiPdfKeepWholeAssemblies).
+    -->
+    <PublishTrimmed>true</PublishTrimmed>
+    <TrimMode>partial</TrimMode>
+    <EventSourceSupport>false</EventSourceSupport>
+    <HttpActivityPropagationSupport>false</HttpActivityPropagationSupport>
+    <PublishReadyToRun>true</PublishReadyToRun>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PublishReadyToRunExclude Include="System.Private.CoreLib.dll;Microsoft.Windows.SDK.NET.dll;Microsoft.WinUI.dll;WinRT.Runtime.dll" />
+  </ItemGroup>
+
+  <!-- Permet un simple `dotnet build` sans préciser -r : le RID suit la plateforme. -->
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' == ''">
+    <RuntimeIdentifier Condition="'$(Platform)' == 'ARM64'">win-arm64</RuntimeIdentifier>
+    <RuntimeIdentifier Condition="'$(Platform)' != 'ARM64'">win-x64</RuntimeIdentifier>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      Windows App SDK : le métapaquet reste référencé, ses composants inutilisés sont neutralisés (même réglage que
+      Quai) : IA, ML, recherche sémantique, widgets, DWriteCore et paquet Runtime (mode dépendant du framework).
+    -->
+    <PackageReference Include="Microsoft.WindowsAppSDK" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.AI" ExcludeAssets="all" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.ML" ExcludeAssets="all" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.Search" ExcludeAssets="all" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.Widgets" ExcludeAssets="all" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.DWrite" ExcludeAssets="all" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.Runtime" ExcludeAssets="all" />
+    <PackageReference Include="Microsoft.Windows.AI.MachineLearning" ExcludeAssets="all" />
+    <PackageReference Include="System.Numerics.Tensors" ExcludeAssets="all" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Microsoft.Extensions.Logging" />
+    <PackageReference Include="Serilog" />
+    <PackageReference Include="Serilog.Extensions.Logging" />
+    <PackageReference Include="Serilog.Sinks.File" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\QuaiPdf.Core\QuaiPdf.Core.csproj" />
+  </ItemGroup>
+
+  <!--
+    Allègement de la publication (repris de Quai) :
+    - WebView2 : ni Microsoft.Web.WebView2.Core.dll ni WebView2Loader.dll ne sont copiées. Aucune application web
+      cachée dans Quai PDF : les pages sont dessinées par le moteur PDF de Windows (Windows.Data.Pdf).
+    - Langues de WinUI : seuls le français et l'anglais (repli) sont gardés, l'interface est forcée en fr-FR.
+    - Carte (map.html) de WinUI : sert au contrôle MapControl, absent de Quai PDF.
+    - Outils de diagnostic du runtime .NET : retirés à la publication seulement.
+  -->
+  <PropertyGroup>
+    <WebView2EnableCsWinRTProjection>true</WebView2EnableCsWinRTProjection>
+    <WebView2EnableCsWinRTProjectionExcludeCoreRef>true</WebView2EnableCsWinRTProjectionExcludeCoreRef>
+  </PropertyGroup>
+
+  <!--
+    Gardées entières au trimming : l'interop WinRT (les view-models et collections de QuaiPdf.Core passent à WinUI
+    par des interfaces COM que CsWinRT construit par réflexion) et le cœur du runtime.
+  -->
+  <Target Name="QuaiPdfKeepWholeAssemblies" BeforeTargets="PrepareForILLink">
+    <ItemGroup>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'WinRT.Runtime'
+                                        or '%(Filename)' == 'System.Private.CoreLib'
+                                        or '%(Filename)' == 'Microsoft.Windows.SDK.NET'
+                                        or '%(Filename)' == 'Microsoft.WinUI'
+                                        or $([System.String]::Copy('%(Filename)').EndsWith('.Projection'))">
+        <TrimMode>copy</TrimMode>
+      </ManagedAssemblyToLink>
+    </ItemGroup>
+  </Target>
+
+  <Target Name="QuaiPdfExcludeWindowsAppSdkPayload"
+          BeforeTargets="AddMicrosoftWindowsAppSDKPayloadFilesFromComponents"
+          DependsOnTargets="GetWindowsAppSDKNativePlatform">
+    <PropertyGroup>
+      <_QuaiPdfWasdkNative>runtimes-framework\win-$(NativePlatform)\native</_QuaiPdfWasdkNative>
+    </PropertyGroup>
+    <ItemGroup>
+      <MicrosoftWindowsAppSDKFilesExcluded Include="%(WindowsAppSdkComponentPackages.Identity)$(_QuaiPdfWasdkNative)\**\*.mui"
+                                           Exclude="%(WindowsAppSdkComponentPackages.Identity)$(_QuaiPdfWasdkNative)\fr-FR\**;%(WindowsAppSdkComponentPackages.Identity)$(_QuaiPdfWasdkNative)\en-US\**;%(WindowsAppSdkComponentPackages.Identity)$(_QuaiPdfWasdkNative)\en-us\**" />
+      <MicrosoftWindowsAppSDKFilesExcluded Include="%(WindowsAppSdkComponentPackages.Identity)$(_QuaiPdfWasdkNative)\**\map.html" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="QuaiPdfExcludeWebView2Loader" AfterTargets="ResolvePackageAssets">
+    <ItemGroup>
+      <NativeCopyLocalItems Remove="@(NativeCopyLocalItems)" Condition="'%(Filename)%(Extension)' == 'WebView2Loader.dll'" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="QuaiPdfExcludeRuntimeDiagnostics" AfterTargets="ResolveRuntimePackAssets" Condition="'$(_IsPublishing)' == 'true'">
+    <ItemGroup>
+      <_QuaiPdfRuntimeDiagnostics Include="@(RuntimePackAsset)"
+                                  Condition="'%(Filename)%(Extension)' == 'createdump.exe'
+                                             or '%(Filename)%(Extension)' == 'mscordbi.dll'
+                                             or $([System.String]::Copy('%(Filename)').StartsWith('mscordaccore'))
+                                             or $([System.String]::Copy('%(Filename)').StartsWith('Microsoft.DiaSymReader.Native'))" />
+      <RuntimePackAsset Remove="@(_QuaiPdfRuntimeDiagnostics)" />
+      <ReferenceCopyLocalPaths Remove="@(_QuaiPdfRuntimeDiagnostics)" />
+    </ItemGroup>
+  </Target>
+
+  <!-- Les fichiers d'Assets sont copiés tels quels à côté de l'exécutable (icône). -->
+  <PropertyGroup>
+    <EnableDefaultAssets>false</EnableDefaultAssets>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Remove="Assets\**" />
+    <Content Include="Assets\**">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+</Project>

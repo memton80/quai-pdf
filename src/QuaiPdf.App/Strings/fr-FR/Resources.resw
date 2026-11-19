@@ -1,0 +1,282 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Common_Cancel" xml:space="preserve">
+    <value>Annuler</value>
+  </data>
+  <data name="Common_Close" xml:space="preserve">
+    <value>Fermer</value>
+  </data>
+  <data name="Toolbar_Open" xml:space="preserve">
+    <value>Ouvrir</value>
+  </data>
+  <data name="Toolbar_OpenTooltip" xml:space="preserve">
+    <value>Ouvrir un PDF (Ctrl+O)</value>
+  </data>
+  <data name="Toolbar_Save" xml:space="preserve">
+    <value>Enregistrer</value>
+  </data>
+  <data name="Toolbar_SaveTooltip" xml:space="preserve">
+    <value>Enregistrer (Ctrl+S)</value>
+  </data>
+  <data name="Toolbar_SaveAs" xml:space="preserve">
+    <value>Enregistrer sous… (Ctrl+Maj+S)</value>
+  </data>
+  <data name="Toolbar_Undo" xml:space="preserve">
+    <value>Annuler</value>
+  </data>
+  <data name="Toolbar_UndoTooltip" xml:space="preserve">
+    <value>Annuler (Ctrl+Z)</value>
+  </data>
+  <data name="Toolbar_Redo" xml:space="preserve">
+    <value>Rétablir</value>
+  </data>
+  <data name="Toolbar_RedoTooltip" xml:space="preserve">
+    <value>Rétablir (Ctrl+Y)</value>
+  </data>
+  <data name="Toolbar_RotateLeft" xml:space="preserve">
+    <value>Pivoter à gauche</value>
+  </data>
+  <data name="Toolbar_RotateLeftTooltip" xml:space="preserve">
+    <value>Pivoter à gauche (Ctrl+Maj+R)</value>
+  </data>
+  <data name="Toolbar_RotateRight" xml:space="preserve">
+    <value>Pivoter à droite</value>
+  </data>
+  <data name="Toolbar_RotateRightTooltip" xml:space="preserve">
+    <value>Pivoter à droite (Ctrl+R)</value>
+  </data>
+  <data name="Toolbar_MoveUp" xml:space="preserve">
+    <value>Monter</value>
+  </data>
+  <data name="Toolbar_MoveUpTooltip" xml:space="preserve">
+    <value>Déplacer vers le début</value>
+  </data>
+  <data name="Toolbar_MoveDown" xml:space="preserve">
+    <value>Descendre</value>
+  </data>
+  <data name="Toolbar_MoveDownTooltip" xml:space="preserve">
+    <value>Déplacer vers la fin</value>
+  </data>
+  <data name="Toolbar_Delete" xml:space="preserve">
+    <value>Supprimer</value>
+  </data>
+  <data name="Toolbar_DeleteTooltip" xml:space="preserve">
+    <value>Supprimer les pages sélectionnées (Suppr dans les vignettes)</value>
+  </data>
+  <data name="Toolbar_Insert" xml:space="preserve">
+    <value>Insérer des pages</value>
+  </data>
+  <data name="Toolbar_InsertTooltip" xml:space="preserve">
+    <value>Insérer les pages d'autres PDF après la page en cours (Ctrl+I)</value>
+  </data>
+  <data name="Toolbar_Extract" xml:space="preserve">
+    <value>Extraire</value>
+  </data>
+  <data name="Toolbar_ExtractTooltip" xml:space="preserve">
+    <value>Enregistrer les pages sélectionnées dans un nouveau PDF (Ctrl+E)</value>
+  </data>
+  <data name="Toolbar_PreviousPage" xml:space="preserve">
+    <value>Page précédente</value>
+  </data>
+  <data name="Toolbar_NextPage" xml:space="preserve">
+    <value>Page suivante</value>
+  </data>
+  <data name="Toolbar_PageNumber" xml:space="preserve">
+    <value>Numéro de page</value>
+  </data>
+  <data name="Toolbar_PageCount" xml:space="preserve">
+    <value>/ {0}</value>
+  </data>
+  <data name="Toolbar_Zoom" xml:space="preserve">
+    <value>Zoom</value>
+  </data>
+  <data name="Toolbar_ZoomIn" xml:space="preserve">
+    <value>Zoom avant</value>
+  </data>
+  <data name="Toolbar_ZoomInTooltip" xml:space="preserve">
+    <value>Zoom avant (Ctrl+Plus ou Ctrl+molette)</value>
+  </data>
+  <data name="Toolbar_ZoomOut" xml:space="preserve">
+    <value>Zoom arrière</value>
+  </data>
+  <data name="Toolbar_ZoomOutTooltip" xml:space="preserve">
+    <value>Zoom arrière (Ctrl+Moins ou Ctrl+molette)</value>
+  </data>
+  <data name="Toolbar_Thumbnails" xml:space="preserve">
+    <value>Vignettes</value>
+  </data>
+  <data name="Toolbar_Properties" xml:space="preserve">
+    <value>Propriétés du document… (Ctrl+D)</value>
+  </data>
+  <data name="Toolbar_Close" xml:space="preserve">
+    <value>Fermer le document (Ctrl+W)</value>
+  </data>
+  <data name="Toolbar_Settings" xml:space="preserve">
+    <value>Réglages</value>
+  </data>
+  <data name="Zoom_FitWidth" xml:space="preserve">
+    <value>Ajuster à la largeur</value>
+  </data>
+  <data name="Zoom_ActualSize" xml:space="preserve">
+    <value>Taille réelle (Ctrl+0)</value>
+  </data>
+  <data name="Document_Busy" xml:space="preserve">
+    <value>Opération en cours</value>
+  </data>
+  <data name="Document_ReadOnlyTitle" xml:space="preserve">
+    <value>Lecture seule</value>
+  </data>
+  <data name="Document_ReadOnlyProtected" xml:space="preserve">
+    <value>Ce document est protégé par son auteur : il s'affiche, mais ses pages et ses propriétés ne peuvent pas être modifiées.</value>
+  </data>
+  <data name="Document_ReadOnlyUnsupported" xml:space="preserve">
+    <value>Quai PDF ne sait pas modifier ce fichier sans risque de l'abîmer : il s'affiche en lecture seule. « Enregistrer sous » en fait une copie identique.</value>
+  </data>
+  <data name="Document_ExtractFileName" xml:space="preserve">
+    <value>{0} (extrait).pdf</value>
+  </data>
+  <data name="Empty_Title" xml:space="preserve">
+    <value>Aucun document ouvert</value>
+  </data>
+  <data name="Empty_Hint" xml:space="preserve">
+    <value>Ouvrez un PDF, ou faites-le glisser ici depuis l'Explorateur.</value>
+  </data>
+  <data name="Empty_Open" xml:space="preserve">
+    <value>Ouvrir un PDF</value>
+  </data>
+  <data name="Drop_Open" xml:space="preserve">
+    <value>Ouvrir</value>
+  </data>
+  <data name="Thumbnails_Name" xml:space="preserve">
+    <value>Vignettes des pages</value>
+  </data>
+  <data name="Reader_Name" xml:space="preserve">
+    <value>Pages du document</value>
+  </data>
+  <data name="Page_Name" xml:space="preserve">
+    <value>Page {0}</value>
+  </data>
+  <data name="Picker_PdfDocument" xml:space="preserve">
+    <value>Document PDF</value>
+  </data>
+  <data name="Password_Title" xml:space="preserve">
+    <value>Document protégé</value>
+  </data>
+  <data name="Password_Message" xml:space="preserve">
+    <value>« {0} » est protégé par un mot de passe. Saisissez-le pour l'ouvrir (il n'est jamais enregistré).</value>
+  </data>
+  <data name="Password_Retry" xml:space="preserve">
+    <value>Mot de passe incorrect pour « {0} ». Réessayez.</value>
+  </data>
+  <data name="Password_Field" xml:space="preserve">
+    <value>Mot de passe</value>
+  </data>
+  <data name="Password_Open" xml:space="preserve">
+    <value>Ouvrir</value>
+  </data>
+  <data name="SaveChanges_Title" xml:space="preserve">
+    <value>Enregistrer les modifications ?</value>
+  </data>
+  <data name="SaveChanges_Message" xml:space="preserve">
+    <value>« {0} » a été modifié. Voulez-vous enregistrer les modifications ?</value>
+  </data>
+  <data name="SaveChanges_Save" xml:space="preserve">
+    <value>Enregistrer</value>
+  </data>
+  <data name="SaveChanges_Discard" xml:space="preserve">
+    <value>Ne pas enregistrer</value>
+  </data>
+  <data name="Metadata_Title" xml:space="preserve">
+    <value>Propriétés du document</value>
+  </data>
+  <data name="Metadata_DocumentTitle" xml:space="preserve">
+    <value>Titre</value>
+  </data>
+  <data name="Metadata_Author" xml:space="preserve">
+    <value>Auteur</value>
+  </data>
+  <data name="Metadata_Subject" xml:space="preserve">
+    <value>Sujet</value>
+  </data>
+  <data name="Metadata_Keywords" xml:space="preserve">
+    <value>Mots-clés</value>
+  </data>
+  <data name="Metadata_Hint" xml:space="preserve">
+    <value>Ces informations sont enregistrées dans le fichier et affichées par les lecteurs PDF et l'Explorateur.</value>
+  </data>
+  <data name="Metadata_Apply" xml:space="preserve">
+    <value>Appliquer</value>
+  </data>
+  <data name="Settings_Title" xml:space="preserve">
+    <value>Réglages</value>
+  </data>
+  <data name="Settings_Theme" xml:space="preserve">
+    <value>Thème</value>
+  </data>
+  <data name="Settings_ThemeSystem" xml:space="preserve">
+    <value>Selon Windows</value>
+  </data>
+  <data name="Settings_ThemeLight" xml:space="preserve">
+    <value>Clair</value>
+  </data>
+  <data name="Settings_ThemeDark" xml:space="preserve">
+    <value>Sombre</value>
+  </data>
+  <data name="Settings_Thumbnails" xml:space="preserve">
+    <value>Afficher les vignettes des pages</value>
+  </data>
+  <data name="Settings_Version" xml:space="preserve">
+    <value>Quai PDF {0}</value>
+  </data>
+  <data name="Settings_OpenLogs" xml:space="preserve">
+    <value>Ouvrir le dossier des journaux</value>
+  </data>
+  <data name="Error_OpenTitle" xml:space="preserve">
+    <value>Ouverture impossible</value>
+  </data>
+  <data name="Error_SaveTitle" xml:space="preserve">
+    <value>Enregistrement impossible</value>
+  </data>
+  <data name="Error_EditTitle" xml:space="preserve">
+    <value>Modification impossible</value>
+  </data>
+  <data name="Error_InsertTitle" xml:space="preserve">
+    <value>Insertion impossible</value>
+  </data>
+  <data name="Error_ExtractTitle" xml:space="preserve">
+    <value>Extraction impossible</value>
+  </data>
+  <data name="Error_FileAccess" xml:space="preserve">
+    <value>Le fichier « {0} » ne peut pas être lu. Il a peut-être été déplacé, ou vous n'avez pas le droit de l'ouvrir.</value>
+  </data>
+  <data name="Error_Unreadable" xml:space="preserve">
+    <value>« {0} » n'est pas un PDF lisible : il est peut-être abîmé ou incomplet.</value>
+  </data>
+  <data name="Error_SourceProtected" xml:space="preserve">
+    <value>« {0} » est protégé par un mot de passe : ses pages ne peuvent pas être insérées.</value>
+  </data>
+  <data name="Error_Protected" xml:space="preserve">
+    <value>Ce document est protégé : il ne peut pas être modifié.</value>
+  </data>
+  <data name="Error_SaveAccess" xml:space="preserve">
+    <value>« {0} » ne peut pas être écrit. Il est peut-être ouvert dans une autre application, en lecture seule, ou dans un dossier protégé.</value>
+  </data>
+  <data name="Error_WriteAccess" xml:space="preserve">
+    <value>Le fichier ne peut pas être écrit. Il est peut-être ouvert dans une autre application, ou dans un dossier protégé.</value>
+  </data>
+  <data name="Error_Unexpected" xml:space="preserve">
+    <value>Une erreur inattendue s'est produite : {0}</value>
+  </data>
+</root>
