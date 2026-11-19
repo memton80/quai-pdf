@@ -5,6 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:l="using:QuaiPdf.App.Localization"
     xmlns:ui="using:QuaiPdf.App"
+    xmlns:views="using:QuaiPdf.App.Views"
     xmlns:vm="using:QuaiPdf.Core.ViewModels"
     AllowDrop="True"
     DragOver="OnDragOver"
@@ -205,6 +206,17 @@
             </AppBarToggleButton>
 
             <CommandBar.SecondaryCommands>
+                <AppBarButton Command="{x:Bind ViewModel.CopyTextCommand}" Label="{l:Str Key=Text_Copy}">
+                    <AppBarButton.Icon>
+                        <FontIcon Glyph="&#xE8C8;" />
+                    </AppBarButton.Icon>
+                </AppBarButton>
+                <AppBarButton Command="{x:Bind ViewModel.SelectAllTextCommand}" Label="{l:Str Key=Text_SelectAll}">
+                    <AppBarButton.Icon>
+                        <FontIcon Glyph="&#xE8B3;" />
+                    </AppBarButton.Icon>
+                </AppBarButton>
+                <AppBarSeparator />
                 <AppBarButton Command="{x:Bind ViewModel.SaveAsCommand}" Label="{l:Str Key=Toolbar_SaveAs}">
                     <AppBarButton.Icon>
                         <FontIcon Glyph="&#xE792;" />
@@ -296,8 +308,23 @@
                 <ScrollViewer
                     x:Name="Scroller"
                     AutomationProperties.Name="{l:Str Key=Reader_Name}"
+                    KeyDown="OnScrollerKeyDown"
                     Style="{StaticResource ReaderScrollViewerStyle}"
                     ViewChanged="OnScrollerViewChanged">
+                    <ScrollViewer.ContextFlyout>
+                        <MenuFlyout>
+                            <MenuFlyoutItem Command="{x:Bind ViewModel.CopyTextCommand}" Text="{l:Str Key=Text_Copy}">
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon Glyph="&#xE8C8;" />
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutItem Command="{x:Bind ViewModel.SelectAllTextCommand}" Text="{l:Str Key=Text_SelectAll}">
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon Glyph="&#xE8B3;" />
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                        </MenuFlyout>
+                    </ScrollViewer.ContextFlyout>
                     <ItemsRepeater
                         x:Name="PagesRepeater"
                         Margin="{StaticResource ReaderPadding}"
@@ -305,7 +332,12 @@
                         ElementClearing="OnPageElementClearing"
                         ElementIndexChanged="OnPageElementIndexChanged"
                         ElementPrepared="OnPageElementPrepared"
-                        ItemsSource="{x:Bind ViewModel.Pages}">
+                        ItemsSource="{x:Bind ViewModel.Pages}"
+                        DoubleTapped="OnPagesDoubleTapped"
+                        PointerCaptureLost="OnPagesPointerReleased"
+                        PointerMoved="OnPagesPointerMoved"
+                        PointerPressed="OnPagesPointerPressed"
+                        PointerReleased="OnPagesPointerReleased">
                         <ItemsRepeater.Layout>
                             <StackLayout Spacing="{StaticResource PageSpacing}" />
                         </ItemsRepeater.Layout>
@@ -316,7 +348,13 @@
                                     Height="{x:Bind DisplayHeight, Mode=OneWay}"
                                     AutomationProperties.Name="{x:Bind ui:UiHelpers.PageName(Number), Mode=OneWay}"
                                     Style="{StaticResource PageBorderStyle}">
-                                    <Image Stretch="Fill" />
+                                    <!-- Image de la page, puis surlignage du texte sélectionné (repère à 100 %, mis à l'échelle). -->
+                                    <views:TextPageSurface>
+                                        <Image Stretch="Fill" />
+                                        <Viewbox Style="{StaticResource TextLayerStyle}">
+                                            <Canvas Width="{x:Bind BaseWidth, Mode=OneWay}" Height="{x:Bind BaseHeight, Mode=OneWay}" />
+                                        </Viewbox>
+                                    </views:TextPageSurface>
                                 </Border>
                             </DataTemplate>
                         </ItemsRepeater.ItemTemplate>

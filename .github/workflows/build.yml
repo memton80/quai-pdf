@@ -130,7 +130,7 @@ jobs:
           $dir = "publish/${{ matrix.platform }}"
           Get-ChildItem $dir | Sort-Object Name | Format-Table Name, Length -AutoSize | Out-String -Width 200
           $required = @(
-            'QuaiPdf.exe', 'QuaiPdf.dll', 'QuaiPdf.Core.dll', 'QuaiPdf.pri', 'Microsoft.WinUI.dll', 'PdfSharp.dll',
+            'QuaiPdf.exe', 'QuaiPdf.dll', 'QuaiPdf.Core.dll', 'QuaiPdf.pri', 'Microsoft.WinUI.dll', 'PdfSharp.dll', 'pdfium.dll',
             'Assets/QuaiPdf.ico', 'Assets/AppIcon.png', 'fr-FR/Microsoft.ui.xaml.dll.mui', 'en-US/Microsoft.ui.xaml.dll.mui')
           $missing = $required | Where-Object { -not (Test-Path (Join-Path $dir $_)) }
           if ($missing) { throw "Fichiers manquants dans la publication : $($missing -join ', ')" }

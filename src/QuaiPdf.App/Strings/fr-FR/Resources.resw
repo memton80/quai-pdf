@@ -279,4 +279,19 @@
   <data name="Error_Unexpected" xml:space="preserve">
     <value>Une erreur inattendue s'est produite : {0}</value>
   </data>
+  <data name="Error_CopyTitle" xml:space="preserve">
+    <value>Copie impossible</value>
+  </data>
+  <data name="Error_CopyForbidden" xml:space="preserve">
+    <value>L'auteur de ce document a interdit la copie de son texte.</value>
+  </data>
+  <data name="Error_Clipboard" xml:space="preserve">
+    <value>Le presse-papiers est occupé par une autre application. Réessayez dans un instant.</value>
+  </data>
+  <data name="Text_Copy" xml:space="preserve">
+    <value>Copier (Ctrl+C)</value>
+  </data>
+  <data name="Text_SelectAll" xml:space="preserve">
+    <value>Tout sélectionner (Ctrl+A)</value>
+  </data>
 </root>

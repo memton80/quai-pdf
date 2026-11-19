@@ -17,6 +17,19 @@
 | Ajuster à la largeur | menu du zoom |
 | Afficher / masquer les vignettes | bouton **Vignettes** |
 
+## Sélectionner et copier du texte
+
+| Action | Comment |
+|---|---|
+| Sélectionner | appuyez sur le texte et faites glisser (les pages défilent si vous sortez de la zone de lecture) |
+| Un mot | double-clic |
+| Étendre la sélection | `Maj+clic` |
+| Tout le document | `Ctrl+A`, ou clic droit, **Tout sélectionner** |
+| Copier | `Ctrl+C`, ou clic droit, **Copier** |
+| Effacer la sélection | un clic ailleurs, ou `Échap` |
+
+Une page scannée (une simple image) n'a pas de texte à sélectionner. Si l'auteur du document a interdit la copie de son texte, Quai PDF le respecte et le dit.
+
 ## Modifier
 
 Les modifications s'appliquent aux **pages sélectionnées dans les vignettes** (clic, `Ctrl+clic`, `Maj+clic`), ou à la page affichée si rien n'est sélectionné. `Échap` dans les vignettes vide la sélection.
@@ -50,4 +63,4 @@ Certains documents s'affichent sans pouvoir être modifiés (un bandeau l'indiqu
 
 ## Limites actuelles
 
-Quai PDF est un lecteur / éditeur **de base**. Pas encore de recherche dans le texte, de sélection ou de copie de texte, d'annotations, de formulaires, de signature, d'impression ni de modification du texte des pages.
+Quai PDF est un lecteur / éditeur **de base**. Pas encore de recherche dans le texte, de reconnaissance du texte des pages scannées, d'annotations, de formulaires, de signature, d'impression ni de modification du texte des pages.

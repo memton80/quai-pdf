@@ -19,6 +19,7 @@
 ## Ce que fait Quai PDF
 
 - **Lire.** Les pages défilent, avec les vignettes à gauche, le zoom (`Ctrl+molette`, `Ctrl+Plus`, `Ctrl+Moins`) et l'ajustement à la largeur.
+- **Copier du texte.** Sélectionnez à la souris comme sur une page web (double-clic pour un mot, `Ctrl+A` pour tout), puis `Ctrl+C`.
 - **Remettre les pages d'aplomb.** Une page scannée à l'envers ou couchée : pivotez-la (`Ctrl+R`).
 - **Réorganiser.** Faites glisser les vignettes pour changer l'ordre, ou utilisez « Monter » / « Descendre ».
 - **Faire le tri.** Supprimez les pages inutiles (`Suppr` dans les vignettes).
@@ -29,7 +30,7 @@
 
 ## Une vraie application, rien de caché
 
-Quai PDF est une application Windows native (WinUI 3) : **aucune page web, aucun navigateur embarqué**. Les pages sont dessinées par le moteur PDF intégré à Windows, et les modifications sont faites par [PDFsharp](https://github.com/empira/PDFsharp), une bibliothèque libre éprouvée. Rien n'est réinventé.
+Quai PDF est une application Windows native (WinUI 3) : **aucune page web, aucun navigateur embarqué**. Les pages sont dessinées par le moteur PDF intégré à Windows, le texte est lu par [PDFium](https://pdfium.googlesource.com/pdfium/) (le moteur PDF de Chrome) et les modifications sont faites par [PDFsharp](https://github.com/empira/PDFsharp), une bibliothèque libre éprouvée. Rien n'est réinventé.
 
 - Les documents protégés par un mot de passe s'ouvrent en **lecture seule** : leur protection n'est jamais retirée sans que vous le sachiez. Le mot de passe n'est jamais enregistré.
 - **Aucune publicité, aucun pistage, aucun compte à créer.** Quai PDF ne se connecte à rien.

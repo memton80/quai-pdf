@@ -7,8 +7,10 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Input;
+using Rectangle = Microsoft.UI.Xaml.Shapes.Rectangle;
 using QuaiPdf.App.Localization;
 using QuaiPdf.App.Services;
+using QuaiPdf.Core.Pdf.Text;
 using QuaiPdf.Core.ViewModels;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
@@ -41,6 +43,12 @@ public sealed partial class DocumentView : UserControl
     // Défilement demandé par le code (aller à la page) : la page visible est déjà connue.
     private bool _scrollingToPage;
 
+    // Bouton de la souris enfoncé sur une page : le glisser étend la sélection de texte.
+    private bool _selectingText;
+
+    // Défilement automatique quand le glisser sort de la zone de lecture (pixels par mouvement de souris).
+    private const double DragScrollStep = 24;
+
     public DocumentView()
     {
         var services = App.Current.Services;
@@ -57,6 +65,7 @@ public sealed partial class DocumentView : UserControl
 
         ViewModel.ContentChanged += OnContentChanged;
         ViewModel.ScrollRequested += (_, index) => ScrollToPage(index);
+        ViewModel.TextSelectionChanged += (_, _) => DrawVisibleSelections();
         ViewModel.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(DocumentViewModel.Zoom))
@@ -83,7 +92,10 @@ public sealed partial class DocumentView : UserControl
     internal bool ReadOnlyBannerShown => ReadOnlyBar.IsOpen && ReadOnlyBar.Visibility == Visibility.Visible;
 
     /// <summary>Nombre de pages dessinées à l'écran (test de fumée).</summary>
-    internal int RenderedPageCount => _realized.Keys.Count(e => e is Border { Child: Image { Source: not null } });
+    internal int RenderedPageCount => _realized.Keys.Count(e => PageImage(e) is { Source: not null });
+
+    /// <summary>Rectangles de surlignage du texte à l'écran (test de fumée).</summary>
+    internal int HighlightCount => _realized.Keys.Sum(e => TextLayer(e)?.Children.Count ?? 0);
 
     /// <summary>Raccourcis de Windows (Ctrl+O, Ctrl+S…), actifs même quand le bouton est dans le menu « … ».</summary>
     private void AddShortcuts()
@@ -105,6 +117,8 @@ public sealed partial class DocumentView : UserControl
         Add(VirtualKey.Subtract, VirtualKeyModifiers.Control, ViewModel.ZoomOutCommand);
         Add(VirtualKey.Number0, VirtualKeyModifiers.Control, ViewModel.ActualSizeCommand);
         Add(VirtualKey.NumberPad0, VirtualKeyModifiers.Control, ViewModel.ActualSizeCommand);
+        Add(VirtualKey.C, VirtualKeyModifiers.Control, ViewModel.CopyTextCommand);
+        Add(VirtualKey.A, VirtualKeyModifiers.Control, ViewModel.SelectAllTextCommand);
 
         void Add(VirtualKey key, VirtualKeyModifiers modifiers, ICommand command)
         {
@@ -286,6 +300,7 @@ public sealed partial class DocumentView : UserControl
         {
             _realized[element] = args.Index;
             _ = RenderPageAsync(element, args.Index);
+            DrawSelection(element, args.Index);
         }
     }
 
@@ -295,6 +310,7 @@ public sealed partial class DocumentView : UserControl
         {
             _realized[element] = args.NewIndex;
             _ = RenderPageAsync(element, args.NewIndex);
+            DrawSelection(element, args.NewIndex);
         }
     }
 
@@ -304,10 +320,12 @@ public sealed partial class DocumentView : UserControl
         {
             _realized.Remove(element);
             element.Tag = null;
-            if (element is Border { Child: Image image })
+            if (PageImage(element) is { } image)
             {
                 image.Source = null;
             }
+
+            TextLayer(element)?.Children.Clear();
         }
     }
 
@@ -321,7 +339,7 @@ public sealed partial class DocumentView : UserControl
 
     private async Task RenderPageAsync(FrameworkElement element, int index)
     {
-        if (element is not Border { Child: Image image }
+        if (PageImage(element) is not { } image
             || ViewModel.Rendered is not WindowsRenderedPdf rendered
             || index >= ViewModel.Pages.Count)
         {
@@ -343,6 +361,155 @@ public sealed partial class DocumentView : UserControl
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Page {Page} non dessinée", index + 1);
+        }
+    }
+
+    // Une page : Border > TextPageSurface > [Image, Viewbox > Canvas] (voir le modèle dans DocumentView.xaml).
+    private static Image? PageImage(FrameworkElement element) =>
+        element is Border { Child: TextPageSurface surface } && surface.Children.Count > 0 ? surface.Children[0] as Image : null;
+
+    private static Canvas? TextLayer(FrameworkElement element) =>
+        element is Border { Child: TextPageSurface surface } && surface.Children.Count > 1 && surface.Children[1] is Viewbox { Child: Canvas canvas }
+            ? canvas
+            : null;
+
+    // ----- Texte : sélection à la souris, surlignage -----
+
+    private void OnPagesPointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        var point = e.GetCurrentPoint(PagesRepeater);
+        if (!point.Properties.IsLeftButtonPressed || !ViewModel.HasDocument)
+        {
+            // Clic droit : la sélection reste, le menu « Copier » s'ouvre.
+            return;
+        }
+
+        // Le clavier suit la lecture (Ctrl+C, Ctrl+A, Échap), même si la case du numéro de page avait le focus.
+        Scroller.Focus(FocusState.Pointer);
+        if (PageUnder(e) is not { } hit)
+        {
+            ViewModel.ClearTextSelection();
+            return;
+        }
+
+        var extend = (e.KeyModifiers & VirtualKeyModifiers.Shift) != 0;
+        if (ViewModel.BeginTextSelection(hit.Index, hit.Point, extend))
+        {
+            _selectingText = PagesRepeater.CapturePointer(e.Pointer);
+            e.Handled = true;
+        }
+    }
+
+    private void OnPagesPointerMoved(object sender, PointerRoutedEventArgs e)
+    {
+        if (!_selectingText)
+        {
+            return;
+        }
+
+        // Glisser au-delà du haut ou du bas de la zone de lecture : les pages défilent.
+        var inReader = e.GetCurrentPoint(Scroller).Position.Y;
+        if (inReader < 0 || inReader > Scroller.ViewportHeight)
+        {
+            var step = inReader < 0 ? -DragScrollStep : DragScrollStep;
+            Scroller.ChangeView(null, Scroller.VerticalOffset + step, null, disableAnimation: true);
+        }
+
+        if (PageUnder(e) is { } hit)
+        {
+            ViewModel.ExtendTextSelection(hit.Index, hit.Point);
+        }
+
+        e.Handled = true;
+    }
+
+    private void OnPagesPointerReleased(object sender, PointerRoutedEventArgs e)
+    {
+        if (_selectingText)
+        {
+            _selectingText = false;
+            PagesRepeater.ReleasePointerCapture(e.Pointer);
+        }
+    }
+
+    private void OnPagesDoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
+    {
+        if (PageUnder(e.GetPosition) is { } hit)
+        {
+            ViewModel.SelectWordAt(hit.Index, hit.Point);
+            e.Handled = true;
+        }
+    }
+
+    private void OnScrollerKeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key == VirtualKey.Escape && ViewModel.HasTextSelection)
+        {
+            ViewModel.ClearTextSelection();
+            e.Handled = true;
+        }
+    }
+
+    private (int Index, PdfPoint Point)? PageUnder(PointerRoutedEventArgs e) =>
+        PageUnder(element => e.GetCurrentPoint(element).Position);
+
+    /// <summary>
+    /// Page sous le pointeur (ou la plus proche, entre deux pages), et le point sur cette page en pixels à 100 %.
+    /// </summary>
+    private (int Index, PdfPoint Point)? PageUnder(Func<UIElement, Windows.Foundation.Point> position)
+    {
+        (int Index, FrameworkElement Element, double Distance)? best = null;
+        foreach (var (element, index) in _realized)
+        {
+            var y = position(element).Y;
+            var distance = y < 0 ? -y : y > element.ActualHeight ? y - element.ActualHeight : 0;
+            if (best is null || distance < best.Value.Distance)
+            {
+                best = (index, element, distance);
+            }
+        }
+
+        if (best is not { } page || TextLayer(page.Element) is not { } layer || page.Index >= ViewModel.Pages.Count)
+        {
+            return null;
+        }
+
+        // Repère du surlignage : la page à 100 %, quelle que soit la mise à l'échelle.
+        var size = ViewModel.Pages[page.Index].Size;
+        var point = position(layer);
+        return (page.Index, new PdfPoint(Math.Clamp(point.X, 0, size.Width), Math.Clamp(point.Y, 0, size.Height)));
+    }
+
+    private void DrawVisibleSelections()
+    {
+        foreach (var (element, index) in _realized)
+        {
+            DrawSelection(element, index);
+        }
+    }
+
+    private void DrawSelection(FrameworkElement element, int index)
+    {
+        if (TextLayer(element) is not { } layer)
+        {
+            return;
+        }
+
+        layer.Children.Clear();
+        try
+        {
+            var style = (Style)Application.Current.Resources["TextHighlightStyle"];
+            foreach (var rect in ViewModel.TextSelectionRects(index))
+            {
+                var highlight = new Rectangle { Width = rect.Width, Height = rect.Height, Style = style };
+                Canvas.SetLeft(highlight, rect.X);
+                Canvas.SetTop(highlight, rect.Y);
+                layer.Children.Add(highlight);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Surlignage de la page {Page} impossible", index + 1);
         }
     }
 

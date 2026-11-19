@@ -2,9 +2,11 @@ using System.Globalization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using PdfSharp.Drawing;
+using PdfSharp.Fonts;
 using PdfSharp.Pdf;
 using QuaiPdf.App.Services;
 using QuaiPdf.Core.Pdf;
+using QuaiPdf.Core.Pdf.Text;
 using QuaiPdf.Core.Storage;
 using QuaiPdf.Core.ViewModels;
 
@@ -82,6 +84,8 @@ internal static class SmokeTest
             report.Add($"Pages dessinées à l'écran : {window.View.RenderedPageCount}");
             await Task.Delay(800);
             await CaptureAsync(hwnd, directory, "2-document.png", report);
+
+            await TextAsync(window, document, services.GetRequiredService<DialogService>(), hwnd, directory, report);
 
             // Modifications : rotation, suppression annulée, déplacement.
             document.SetSelection([0]);
@@ -167,6 +171,59 @@ internal static class SmokeTest
         }
     }
 
+    /// <summary>
+    /// Texte : tout sélectionner (surlignage à l'écran), copier dans le presse-papiers de Windows, puis un glisser
+    /// simulé sur un mot (mêmes appels que la souris).
+    /// </summary>
+    private static async Task TextAsync(MainWindow window, DocumentViewModel document, DialogService dialogs, IntPtr hwnd, string directory, List<string> report)
+    {
+        document.SelectAllTextCommand.Execute(null);
+        var all = document.SelectedText;
+        Check(all.Contains("Page 1 : Bonjour Quai PDF", StringComparison.Ordinal) && all.Contains("Page 3", StringComparison.Ordinal),
+            $"texte sélectionné : « {all} »");
+        await Task.Delay(300);
+        Check(window.View.HighlightCount > 0, "surlignage du texte sélectionné à l'écran");
+        report.Add($"Texte du document : {all.Length} caractères, {window.View.HighlightCount} rectangles surlignés à l'écran");
+
+        // Copie : un message d'erreur (presse-papiers indisponible) ferait attendre la commande.
+        var copy = document.CopyTextCommand.ExecuteAsync(null);
+        await Task.WhenAny(copy, Task.Delay(3000));
+        if (!copy.IsCompleted)
+        {
+            await CaptureAsync(hwnd, directory, "echec-copie.png", report);
+            dialogs.Current?.Hide();
+            await copy;
+            Check(false, "copie dans le presse-papiers : message d'erreur affiché");
+        }
+
+        try
+        {
+            var copied = await Windows.ApplicationModel.DataTransfer.Clipboard.GetContent().GetTextAsync();
+            Check(copied == all, $"presse-papiers : « {copied} »");
+            report.Add("Presse-papiers : texte copié relu à l'identique");
+        }
+        catch (Exception ex) when (ex is not InvalidOperationException)
+        {
+            // Lecture refusée par Windows (session sans focus) : la copie elle-même n'a pas signalé d'erreur.
+            report.Add($"Presse-papiers non relu ({ex.GetType().Name}) : copie faite sans erreur");
+        }
+
+        // Glisser du milieu gauche de « Bonjour » à son milieu droit, sur la page 1.
+        var page = document.TextPage(0) ?? throw new InvalidOperationException("Texte de la page 1 indisponible.");
+        var start = page.AllText().IndexOf("Bonjour", StringComparison.Ordinal);
+        Check(start >= 0, "mot « Bonjour » sur la page 1");
+        var word = page.Rects(start, start + 6)[0];
+        var middle = word.Y + (word.Height / 2);
+        document.BeginTextSelection(0, new PdfPoint(word.X + 1, middle), extend: false);
+        document.ExtendTextSelection(0, new PdfPoint(word.Right - 1, middle));
+        Check(document.SelectedText == "Bonjour", $"glisser sur « Bonjour » : « {document.SelectedText} »");
+        await Task.Delay(300);
+        await CaptureAsync(hwnd, directory, "2b-texte.png", report);
+
+        document.ClearTextSelection();
+        Check(window.View.HighlightCount == 0, "surlignage effacé");
+    }
+
     public static void Fail(string directory, Exception? exception)
     {
         TryWrite(Path.Combine(directory, "smoke-error.txt"), exception?.ToString() ?? "Erreur inconnue");
@@ -233,16 +290,20 @@ internal static class SmokeTest
         }
     }
 
-    /// <summary>Document d'exemple : A4 portrait, A4 paysage, Letter ; une flèche montre le haut de chaque page.</summary>
+    /// <summary>
+    /// Document d'exemple : A4 portrait, A4 paysage, Letter ; une flèche montre le haut de chaque page, et une ligne
+    /// de texte (police Arial de Windows, intégrée au fichier par PDFsharp) sert à la sélection.
+    /// </summary>
     private static class SampleDocument
     {
         public static byte[] Create(string? ownerPassword = null)
         {
+            GlobalFontSettings.UseWindowsFontsUnderWindows = true;
             using var document = new PdfDocument();
             document.Info.Title = "Exemple Quai PDF";
-            AddPage(document, 595, 842, XColors.SteelBlue);
-            AddPage(document, 842, 595, XColors.SeaGreen);
-            AddPage(document, 612, 792, XColors.IndianRed);
+            AddPage(document, 1, 595, 842, XColors.SteelBlue);
+            AddPage(document, 2, 842, 595, XColors.SeaGreen);
+            AddPage(document, 3, 612, 792, XColors.IndianRed);
             if (ownerPassword is not null)
             {
                 document.SecuritySettings.OwnerPassword = ownerPassword;
@@ -253,7 +314,7 @@ internal static class SmokeTest
             return output.ToArray();
         }
 
-        private static void AddPage(PdfDocument document, double width, double height, XColor color)
+        private static void AddPage(PdfDocument document, int number, double width, double height, XColor color)
         {
             var page = document.AddPage();
             page.Width = XUnit.FromPoint(width);
@@ -263,9 +324,10 @@ internal static class SmokeTest
             gfx.DrawRectangle(new XPen(color, 4), 36, 36, width - 72, height - 72);
             gfx.DrawPolygon(brush, [new XPoint(width / 2, 90), new XPoint((width / 2) - 60, 190), new XPoint((width / 2) + 60, 190)], XFillMode.Winding);
             gfx.DrawRectangle(brush, (width / 2) - 20, 190, 40, 120);
-            for (var i = 0; i < 6; i++)
+            gfx.DrawString($"Page {number} : Bonjour Quai PDF", new XFont("Arial", 22), XBrushes.Black, new XPoint(72, 352));
+            for (var i = 0; i < 5; i++)
             {
-                gfx.DrawRectangle(XBrushes.LightGray, 72, 360 + (i * 30), width - 144 - (i % 3 * 60), 12);
+                gfx.DrawRectangle(XBrushes.LightGray, 72, 380 + (i * 30), width - 144 - (i % 3 * 60), 12);
             }
         }
     }

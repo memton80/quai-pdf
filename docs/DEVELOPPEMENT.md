@@ -4,13 +4,13 @@
 
 | Dossier | Contenu |
 |---|---|
-| `src/QuaiPdf.Core` | sans interface : opérations PDF (`Pdf/PdfOperations.cs`, PDFsharp), historique, view-models (`ViewModels/DocumentViewModel.cs`), réglages |
+| `src/QuaiPdf.Core` | sans interface : opérations PDF (`Pdf/PdfOperations.cs`, PDFsharp), texte des pages (`Pdf/Text`, PDFium), historique, view-models (`ViewModels/DocumentViewModel.cs` et `.Text.cs`), réglages |
 | `src/QuaiPdf.App` | WinUI 3 : fenêtre, vue du document, rendu des pages (`Services/WindowsPdfRenderer.cs`, `Windows.Data.Pdf`), dialogues, test de fumée |
 | `tests/QuaiPdf.Core.Tests` | xUnit : opérations sur de vrais PDF fabriqués avec PDFsharp, view-models avec un moteur d'affichage factice, clés de traduction |
 | `installer/QuaiPdf.iss` | installateur Inno Setup (par utilisateur, « Ouvrir avec » pour les PDF) |
 | `tools/make_icon.py` | génère l'icône (Pillow) |
 
-`QuaiPdf.Core` ne dépend pas de Windows : ses tests tournent aussi sous Linux.
+`QuaiPdf.Core` ne dépend pas de Windows : ses tests tournent aussi sous Linux (PDFium natif Linux pour les tests du texte).
 
 ## Commandes
 

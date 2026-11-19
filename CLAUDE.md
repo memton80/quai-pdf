@@ -13,6 +13,7 @@ Avant d'écrire une brique toi-même, cherche une bibliothèque ou un composant 
 | Besoin | Brique |
 |---|---|
 | Affichage des pages | moteur PDF intégré à Windows (`Windows.Data.Pdf`). **Interdit absolu** : WebView2, PDF.js ou toute application web cachée |
+| Texte (sélection, copie) | PDFium natif (`bblanchon.PDFium.Win32` / `.Linux`), API C déclarée dans `Pdf/Text/PdfiumNative.cs` |
 | Modification (pages, propriétés) | `PDFsharp` **6.2.4, dernière version MIT** — à partir de 6.5.0 la licence est AGPL-3.0 : ne pas monter de version sans en parler à Alexandre |
 | MVVM | `CommunityToolkit.Mvvm` |
 | DI, logs | `Microsoft.Extensions.*` + `Serilog` (fichier) |
@@ -30,7 +31,7 @@ Avant d'écrire une brique toi-même, cherche une bibliothèque ou un composant 
 
 ```
 QuaiPdf.sln
-src/QuaiPdf.Core/          logique sans aucune dépendance UI (opérations PDF, historique, view-models, réglages)
+src/QuaiPdf.Core/          logique sans aucune dépendance UI (opérations PDF, texte, historique, view-models, réglages)
 src/QuaiPdf.App/           application WinUI 3 (vues, rendu Windows.Data.Pdf, dialogues, test de fumée)
 tests/QuaiPdf.Core.Tests/  tests xUnit sur QuaiPdf.Core (tournent aussi sous Linux)
 installer/QuaiPdf.iss      installateur Inno Setup

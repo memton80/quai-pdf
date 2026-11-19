@@ -41,6 +41,7 @@ internal static class AppServices
         services.AddSingleton<IDialogService>(provider => provider.GetRequiredService<DialogService>());
         services.AddSingleton<FileDialogs>();
         services.AddSingleton<IFileDialogs>(provider => provider.GetRequiredService<FileDialogs>());
+        services.AddSingleton<IClipboard, ClipboardService>();
 
         // PDF : affichage par Windows, modifications par PDFsharp (dans QuaiPdf.Core)
         services.AddSingleton<IPdfRenderer, WindowsPdfRenderer>();
