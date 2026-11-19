@@ -1,7 +1,6 @@
 using System.Windows.Input;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
@@ -14,6 +13,8 @@ using QuaiPdf.Core.ViewModels;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
 using Windows.System;
+using DispatcherQueuePriority = Microsoft.UI.Dispatching.DispatcherQueuePriority;
+using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
 
 namespace QuaiPdf.App.Views;
 
