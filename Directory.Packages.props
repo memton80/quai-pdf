@@ -1,0 +1,41 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <!-- Windows App SDK : métapaquet et composants à la même version (voir QuaiPdf.App.csproj et docs/DECISIONS.md). -->
+    <WindowsAppSdkVersion>2.6.5</WindowsAppSdkVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- QuaiPdf.Core -->
+    <!--
+      Modification des PDF. Figé en 6.2.4 : dernière version sous licence MIT ; à partir de la 6.5.0, PDFsharp est
+      publié sous AGPL-3.0, incompatible avec la licence MIT de Quai PDF (voir docs/DECISIONS.md).
+    -->
+    <PackageVersion Include="PDFsharp" Version="6.2.4" />
+    <!--
+      Dépendance de PDFsharp (signatures numériques, inutilisées ici) : sa version 8.0.1 a des failles connues
+      (GHSA-2fmv-rv2c-59x7, GHSA-846f-f764-76mx). Référence directe à la version corrigée de .NET 10.
+    -->
+    <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="10.0.15" />
+    <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.15" />
+    <!-- QuaiPdf.App -->
+    <PackageVersion Include="Microsoft.WindowsAppSDK" Version="$(WindowsAppSdkVersion)" />
+    <!-- Composants du Windows App SDK neutralisés (ExcludeAssets="all" dans QuaiPdf.App.csproj). -->
+    <PackageVersion Include="Microsoft.WindowsAppSDK.AI" Version="$(WindowsAppSdkVersion)" />
+    <PackageVersion Include="Microsoft.WindowsAppSDK.ML" Version="$(WindowsAppSdkVersion)" />
+    <PackageVersion Include="Microsoft.WindowsAppSDK.Search" Version="$(WindowsAppSdkVersion)" />
+    <PackageVersion Include="Microsoft.WindowsAppSDK.Widgets" Version="$(WindowsAppSdkVersion)" />
+    <PackageVersion Include="Microsoft.WindowsAppSDK.DWrite" Version="$(WindowsAppSdkVersion)" />
+    <PackageVersion Include="Microsoft.WindowsAppSDK.Runtime" Version="$(WindowsAppSdkVersion)" />
+    <PackageVersion Include="Microsoft.Windows.AI.MachineLearning" Version="2.4.89" />
+    <PackageVersion Include="System.Numerics.Tensors" Version="9.0.0" />
+    <PackageVersion Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2957" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.15" />
+    <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.15" />
+    <PackageVersion Include="Serilog" Version="4.4.0" />
+    <PackageVersion Include="Serilog.Extensions.Logging" Version="10.0.0" />
+    <PackageVersion Include="Serilog.Sinks.File" Version="7.0.0" />
+    <!-- Tests -->
+    <PackageVersion Include="xunit.v3" Version="4.0.3" />
+  </ItemGroup>
+</Project>
