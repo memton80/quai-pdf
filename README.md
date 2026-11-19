@@ -20,6 +20,9 @@
 
 - **Lire.** Les pages défilent, avec les vignettes à gauche, le zoom (`Ctrl+molette`, `Ctrl+Plus`, `Ctrl+Moins`) et l'ajustement à la largeur.
 - **Copier du texte.** Sélectionnez à la souris comme sur une page web (double-clic pour un mot, `Ctrl+A` pour tout), puis `Ctrl+C`.
+
+![Un mot sélectionné à la souris, prêt à être copié](docs/images/texte.png)
+
 - **Remettre les pages d'aplomb.** Une page scannée à l'envers ou couchée : pivotez-la (`Ctrl+R`).
 - **Réorganiser.** Faites glisser les vignettes pour changer l'ordre, ou utilisez « Monter » / « Descendre ».
 - **Faire le tri.** Supprimez les pages inutiles (`Suppr` dans les vignettes).
