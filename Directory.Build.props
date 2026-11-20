@@ -5,7 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AnalysisLevel>latest</AnalysisLevel>
     <Product>Quai PDF</Product>
-    <Version>0.1.0</Version>
+    <Version>0.1.5</Version>
     <NeutralLanguage>fr-FR</NeutralLanguage>
     <SatelliteResourceLanguages>fr</SatelliteResourceLanguages>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
