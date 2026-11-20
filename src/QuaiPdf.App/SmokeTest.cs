@@ -106,7 +106,14 @@ internal static class SmokeTest
             await Task.Delay(800);
             await CaptureAsync(hwnd, directory, "2-document.png", report);
 
+            // Première ouverture : la zone de lecture n'avait pas encore de taille, le zoom s'ajuste quand elle en a une.
+            await WaitForAsync(() => document.ViewportWidth > 0, "largeur de la zone de lecture");
+            var fit = Math.Min((document.ViewportWidth - 48) / document.Pages.Max(p => p.Size.Width), 1.5);
+            await WaitForAsync(() => Math.Abs(document.Zoom - fit) < 0.01, $"zoom « ajuster à la largeur » à l'ouverture ({fit:P0}, affiché : {document.ZoomText})");
+            report.Add($"Zoom à l'ouverture : {document.ZoomText}");
+
             await TextAsync(window, document, services.GetRequiredService<DialogService>(), hwnd, directory, report);
+            await FollowVisiblePageAsync(window, document, hwnd, directory, report);
 
             // Modifications : rotation, suppression annulée, déplacement.
             document.SetSelection([0]);
@@ -311,6 +318,35 @@ internal static class SmokeTest
 
         document.ClearTextSelection();
         Check(window.View.HighlightCount == 0, "surlignage effacé");
+    }
+
+    /// <summary>
+    /// Défilement : le numéro de page et la vignette sélectionnée (sa barre d'accent) suivent la page visible, jusqu'à la
+    /// dernière ; un « aller à la page » sans défilement (page déjà à l'écran) n'empêche pas de suivre la suite.
+    /// </summary>
+    private static async Task FollowVisiblePageAsync(MainWindow window, DocumentViewModel document, IntPtr hwnd, string directory, List<string> report)
+    {
+        Check(window.View.SelectedThumbnails.SequenceEqual([0]), $"vignettes sélectionnées à l'ouverture : [{string.Join(", ", window.View.SelectedThumbnails)}]");
+
+        window.View.ScrollReaderToEnd();
+        await WaitForAsync(() => document.CurrentPageNumber == 3 && window.View.ShownPageNumber == 3, "numéro de page après défilement jusqu'en bas");
+        await WaitForAsync(() => window.View.SelectedThumbnails.SequenceEqual([2]), "vignette de la page visible après défilement");
+        await Task.Delay(500);
+        await CaptureAsync(hwnd, directory, "2c-defilement.png", report);
+
+        document.GoToPage(1);
+        await WaitForAsync(() => window.View.ShownPageNumber == 1 && window.View.SelectedThumbnails.SequenceEqual([0]), "retour à la page 1");
+        await Task.Delay(300);
+
+        // Page 1 déjà en haut de l'écran : rien ne défile. Le défilement suivant doit tout de même être suivi.
+        document.GoToPage(1);
+        await Task.Delay(300);
+        window.View.ScrollReaderToEnd();
+        await WaitForAsync(() => document.CurrentPageNumber == 3, "page visible après un « aller à la page » sans défilement");
+
+        document.GoToPage(1);
+        await WaitForAsync(() => window.View.ShownPageNumber == 1 && window.View.SelectedThumbnails.SequenceEqual([0]), "retour à la page 1");
+        report.Add("Défilement : numéro de page et vignette sélectionnée suivent la page visible");
     }
 
     public static void Fail(string directory, Exception? exception)

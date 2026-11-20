@@ -474,6 +474,21 @@ public sealed class DocumentViewModelTests : IDisposable
     }
 
     [Fact]
+    public async Task Open_BeforeTheViewHasAWidth_FitsWidthOnceTheWidthIsKnown()
+    {
+        // Première ouverture : la zone de lecture, masquée sans document, n'a pas encore de taille.
+        await OpenSampleAsync(1);
+        Assert.Equal(1, _document.Zoom, 3);
+
+        _document.ViewportWidth = 48 + (_document.Pages[0].Size.Width * 0.5);
+        Assert.Equal(0.5, _document.Zoom, 3);
+
+        // Seulement à l'ouverture : redimensionner la fenêtre ensuite ne touche plus au zoom.
+        _document.ViewportWidth = 48 + _document.Pages[0].Size.Width;
+        Assert.Equal(0.5, _document.Zoom, 3);
+    }
+
+    [Fact]
     public async Task FitWidth_UsesWidestPage()
     {
         await OpenSampleAsync(3);
@@ -500,6 +515,99 @@ public sealed class DocumentViewModelTests : IDisposable
         Assert.Equal(3, _document.CurrentPageNumber);
         Assert.False(_document.NextPageCommand.CanExecute(null));
         Assert.True(_document.PreviousPageCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public async Task Open_SelectsTheFirstPage()
+    {
+        DocumentChangedEventArgs? change = null;
+        _document.ContentChanged += (_, e) => change = e;
+
+        await OpenSampleAsync(3);
+
+        Assert.Equal([0], _document.SelectedIndices);
+        Assert.NotNull(change);
+        Assert.Equal([0], change.Selection);
+    }
+
+    [Fact]
+    public async Task Scrolling_MovesTheSinglePageSelectionWithTheVisiblePage()
+    {
+        await OpenSampleAsync(4);
+        var followed = 0;
+        _document.SelectionFollowedPage += (_, _) => followed++;
+
+        // La vue renseigne la page visible au défilement ; les boutons passent par GoToPage.
+        _document.CurrentPageNumber = 3;
+        Assert.Equal([2], _document.SelectedIndices);
+
+        _document.NextPageCommand.Execute(null);
+        Assert.Equal([3], _document.SelectedIndices);
+        Assert.Equal(2, followed);
+
+        // Vignette cliquée : la sélection est déjà la page montrée, rien à reporter.
+        _document.SetSelection([0]);
+        _document.GoToPage(1);
+        Assert.Equal(2, followed);
+    }
+
+    [Fact]
+    public async Task Scrolling_KeepsASelectionOfSeveralPages()
+    {
+        await OpenSampleAsync(4);
+        _document.SetSelection([0, 2]);
+        var followed = 0;
+        _document.SelectionFollowedPage += (_, _) => followed++;
+
+        _document.CurrentPageNumber = 4;
+
+        Assert.Equal([0, 2], _document.SelectedIndices);
+        Assert.Equal(0, followed);
+    }
+
+    [Fact]
+    public async Task Scrolling_AfterClearingTheSelection_SelectsTheVisiblePageAgain()
+    {
+        await OpenSampleAsync(3);
+        _document.SetSelection([]);
+
+        _document.CurrentPageNumber = 2;
+
+        Assert.Equal([1], _document.SelectedIndices);
+    }
+
+    [Fact]
+    public async Task Undo_SelectsTheVisiblePage()
+    {
+        await OpenSampleAsync(3);
+        _document.SetSelection([0, 1]);
+        await _document.RotateRightCommand.ExecuteAsync(null);
+        DocumentChangedEventArgs? change = null;
+        _document.ContentChanged += (_, e) => change = e;
+
+        await _document.UndoCommand.ExecuteAsync(null);
+
+        Assert.Equal([0], _document.SelectedIndices);
+        Assert.NotNull(change);
+        Assert.Equal([0], change.Selection);
+    }
+
+    [Fact]
+    public async Task Reorder_OnePage_ShowsItWhereItLanded()
+    {
+        await OpenSampleAsync(4);
+        _document.GoToPage(2);
+        DocumentChangedEventArgs? change = null;
+        _document.ContentChanged += (_, e) => change = e;
+
+        // Glisser-déposer de la vignette 4 en tête.
+        _document.SetSelection([3]);
+        await _document.ReorderAsync([3, 0, 1, 2]);
+
+        Assert.NotNull(change);
+        Assert.Equal(0, change.ScrollTo);
+        Assert.Equal([0], change.Selection);
+        Assert.Equal(1, _document.CurrentPageNumber);
     }
 
     [Fact]

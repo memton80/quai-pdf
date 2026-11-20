@@ -48,6 +48,14 @@ public sealed partial class DocumentViewModel : ObservableObject, IDisposable
     // Contenu tel qu'il est sur le disque : comparé au contenu affiché pour savoir s'il reste à enregistrer.
     private byte[]? _savedContent;
 
+    // Largeur de la zone de lecture, et « ajuster à la largeur » de l'ouverture en attente de cette largeur (à la
+    // première ouverture, la zone de lecture, masquée sans document, n'a pas encore de taille).
+    private double _viewportWidth;
+    private bool _fitWidthPending;
+
+    // Nouveau contenu en cours d'affichage : la sélection est celle de la modification, pas celle de la page visible.
+    private bool _showing;
+
     public DocumentViewModel(
         IPdfRenderer renderer,
         IDialogService dialogs,
@@ -71,6 +79,12 @@ public sealed partial class DocumentViewModel : ObservableObject, IDisposable
 
     /// <summary>Demande de faire défiler la lecture jusqu'à une page (indice).</summary>
     public event EventHandler<int>? ScrollRequested;
+
+    /// <summary>
+    /// La sélection a suivi la page visible (défilement, page suivante…) : la vue la reporte sur les vignettes.
+    /// Jamais levé par <see cref="SetSelection"/>, qui vient de la vue elle-même.
+    /// </summary>
+    public event EventHandler? SelectionFollowedPage;
 
     public ObservableCollection<PageItemViewModel> Pages { get; } = [];
 
@@ -134,7 +148,19 @@ public sealed partial class DocumentViewModel : ObservableObject, IDisposable
     public string ZoomText => $"{Math.Round(Zoom * 100)} %";
 
     /// <summary>Largeur de la zone de lecture (renseignée par la vue) : sert à « Ajuster à la largeur ».</summary>
-    public double ViewportWidth { get; set; }
+    public double ViewportWidth
+    {
+        get => _viewportWidth;
+        set
+        {
+            _viewportWidth = value;
+            if (_fitWidthPending && FitWidthZoom() is { } zoom)
+            {
+                _fitWidthPending = false;
+                Zoom = Math.Min(zoom, MaxOpeningZoom);
+            }
+        }
+    }
 
     /// <summary>Page visible (à partir de 1), mise à jour par la vue au défilement.</summary>
     [ObservableProperty]
@@ -142,7 +168,11 @@ public sealed partial class DocumentViewModel : ObservableObject, IDisposable
 
     public int PageCount => Pages.Count;
 
-    /// <summary>Pages visées par une commande : la sélection, sinon la page visible.</summary>
+    /// <summary>
+    /// Pages visées par une commande : la sélection, sinon la page visible. Une sélection d'une seule page suit la page
+    /// visible (la barre de la vignette sélectionnée montre où l'on en est) ; une sélection de plusieurs pages, faite
+    /// pour une commande, n'est pas défaite par le défilement.
+    /// </summary>
     public IReadOnlyList<int> TargetIndices => SelectedIndices.Count > 0
         ? SelectedIndices
         : HasDocument ? [Math.Clamp(CurrentPageNumber, 1, Math.Max(1, PageCount)) - 1] : [];
@@ -284,7 +314,10 @@ public sealed partial class DocumentViewModel : ObservableObject, IDisposable
 
         var selected = new HashSet<int>(SelectedIndices);
         var selection = Enumerable.Range(0, order.Count).Where(position => selected.Contains(order[position])).ToList();
-        if (!await ApplyAsync(content => PdfOperations.Reorder(content, order), _ => selection, scrollToSelection: false))
+
+        // Une seule page déplacée : elle est montrée, comme avec « Monter » / « Descendre » (sa vignette reste
+        // sélectionnée, et la sélection d'une page est toujours la page visible).
+        if (!await ApplyAsync(content => PdfOperations.Reorder(content, order), _ => selection, scrollToSelection: selection.Count == 1))
         {
             // Les vignettes ont déjà été déplacées par le glisser-déposer : elles reprennent l'ordre du contenu.
             RestorePageOrder();
@@ -444,7 +477,28 @@ public sealed partial class DocumentViewModel : ObservableObject, IDisposable
     {
         PreviousPageCommand.NotifyCanExecuteChanged();
         NextPageCommand.NotifyCanExecuteChanged();
+        if (!_showing && FollowVisiblePage())
+        {
+            SelectionFollowedPage?.Invoke(this, EventArgs.Empty);
+        }
+
         RefreshTargetCommands();
+    }
+
+    /// <summary>
+    /// Une sélection vide ou d'une seule page devient la page visible. Retourne vrai si la sélection a changé.
+    /// </summary>
+    private bool FollowVisiblePage()
+    {
+        var index = CurrentPageNumber - 1;
+        if (!HasDocument || SelectedIndices.Count > 1 || index < 0 || index >= PageCount
+            || SelectedIndices is [var selected] && selected == index)
+        {
+            return false;
+        }
+
+        SelectedIndices = [index];
+        return true;
     }
 
     partial void OnIsBusyChanged(bool value) => RefreshCommands();
@@ -504,6 +558,11 @@ public sealed partial class DocumentViewModel : ObservableObject, IDisposable
         if (FitWidthZoom() is { } zoom)
         {
             Zoom = Math.Min(zoom, MaxOpeningZoom);
+        }
+        else
+        {
+            // Largeur de la zone de lecture encore inconnue : le zoom s'ajuste dès que la vue la donne.
+            _fitWidthPending = true;
         }
 
         _logger.LogInformation("Ouverture de {File} : {Pages} page(s), {Editability}", name, PageCount, editability);
@@ -717,7 +776,18 @@ public sealed partial class DocumentViewModel : ObservableObject, IDisposable
 
         OnPropertyChanged(nameof(PageCount));
         SelectedIndices = selection.Where(i => i >= 0 && i < sizes.Count).ToList();
-        CurrentPageNumber = Math.Clamp(scrollTo is { } page ? page + 1 : CurrentPageNumber, 1, Math.Max(1, sizes.Count));
+        _showing = true;
+        try
+        {
+            CurrentPageNumber = Math.Clamp(scrollTo is { } page ? page + 1 : CurrentPageNumber, 1, Math.Max(1, sizes.Count));
+        }
+        finally
+        {
+            _showing = false;
+        }
+
+        // Sélection vide ou d'une page : la page visible (transmise à la vue avec le contenu).
+        FollowVisiblePage();
         IsModified = !ReferenceEquals(content, _savedContent);
         ContentChanged?.Invoke(this, new DocumentChangedEventArgs(SelectedIndices, scrollTo));
         RefreshCommands();
@@ -728,6 +798,7 @@ public sealed partial class DocumentViewModel : ObservableObject, IDisposable
     {
         ResetText();
         _history.Clear();
+        _fitWidthPending = false;
         Rendered?.Dispose();
         Rendered = null;
         Content = null;

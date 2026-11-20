@@ -40,8 +40,14 @@ public sealed partial class DocumentView : UserControl
     // La sélection des vignettes est modifiée par le code (après une modification) : ne pas la renvoyer au view-model.
     private bool _syncingSelection;
 
-    // Défilement demandé par le code (aller à la page) : la page visible est déjà connue.
-    private bool _scrollingToPage;
+    // Défilement demandé par le code (aller à une page) : position visée. Tant que la lecture y est, la page visible
+    // est celle demandée (la dernière page, trop courte pour monter en haut de l'écran, n'atteindrait jamais le
+    // repère). Une position et non un drapeau : si la page est déjà là, aucun ViewChanged ne vient l'effacer, et le
+    // défilement suivant de l'utilisateur, ailleurs, doit compter.
+    private double? _scrollTarget;
+
+    // Écart toléré entre la position visée et la position atteinte (arrondis de mise à l'échelle).
+    private const double ScrollTolerance = 1;
 
     // Bouton de la souris enfoncé sur une page : le glisser étend la sélection de texte.
     private bool _selectingText;
@@ -65,6 +71,7 @@ public sealed partial class DocumentView : UserControl
 
         ViewModel.ContentChanged += OnContentChanged;
         ViewModel.ScrollRequested += (_, index) => ScrollToPage(index);
+        ViewModel.SelectionFollowedPage += (_, _) => OnSelectionFollowedPage();
         ViewModel.TextSelectionChanged += (_, _) => DrawVisibleSelections();
         ViewModel.PropertyChanged += (_, e) =>
         {
@@ -96,6 +103,13 @@ public sealed partial class DocumentView : UserControl
 
     /// <summary>Rectangles de surlignage du texte à l'écran (test de fumée).</summary>
     internal int HighlightCount => _realized.Keys.Sum(e => TextLayer(e)?.Children.Count ?? 0);
+
+    /// <summary>Vignettes sélectionnées, dans l'ordre (test de fumée).</summary>
+    internal IReadOnlyList<int> SelectedThumbnails =>
+        [.. Thumbnails.SelectedRanges.SelectMany(range => Enumerable.Range(range.FirstIndex, (int)range.Length)).Order()];
+
+    /// <summary>Fait défiler la lecture tout en bas, comme l'utilisateur (test de fumée).</summary>
+    internal void ScrollReaderToEnd() => Scroller.ChangeView(null, Scroller.ScrollableHeight, null, disableAnimation: true);
 
     /// <summary>Raccourcis de Windows (Ctrl+O, Ctrl+S…), actifs même quand le bouton est dans le menu « … ».</summary>
     private void AddShortcuts()
@@ -151,20 +165,7 @@ public sealed partial class DocumentView : UserControl
 
     private void ShowChange(DocumentChangedEventArgs e)
     {
-        _syncingSelection = true;
-        try
-        {
-            Thumbnails.SelectedItems.Clear();
-            foreach (var index in e.Selection)
-            {
-                Thumbnails.SelectRange(new ItemIndexRange(index, 1));
-            }
-        }
-        finally
-        {
-            _syncingSelection = false;
-        }
-
+        SelectThumbnails(e.Selection);
         RenderVisiblePages();
         RenderVisibleThumbnails();
 
@@ -194,48 +195,81 @@ public sealed partial class DocumentView : UserControl
             return;
         }
 
+        // La page demandée est la page visible (après un zoom, la mise en page a pu en annoncer une autre entre-temps).
+        if (ViewModel.CurrentPageNumber != index + 1)
+        {
+            ViewModel.CurrentPageNumber = index + 1;
+        }
+
         try
         {
-            _scrollingToPage = true;
             PagesRepeater.UpdateLayout();
             var element = PagesRepeater.GetOrCreateElement(index);
             element.UpdateLayout();
+
+            // Haut de la page en haut de l'écran, dans la limite du défilement possible (dernières pages).
+            var top = element.TransformToVisual(Scroller).TransformPoint(default).Y;
+            _scrollTarget = Math.Clamp(Scroller.VerticalOffset + top, 0, Scroller.ScrollableHeight);
             element.StartBringIntoView(new BringIntoViewOptions { AnimationDesired = false, VerticalAlignmentRatio = 0 });
         }
         catch (Exception ex)
         {
-            _scrollingToPage = false;
+            _scrollTarget = null;
             _logger.LogWarning(ex, "Défilement jusqu'à la page {Page} impossible", index + 1);
         }
     }
 
     private void OnScrollerViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)
     {
-        if (e.IsIntermediate)
+        if (_scrollTarget is { } target)
         {
-            return;
-        }
-
-        if (_scrollingToPage)
-        {
-            _scrollingToPage = false;
-            return;
-        }
-
-        // Page visible : celle qui occupe le premier quart de l'écran.
-        var probe = Scroller.ViewportHeight / 4;
-        foreach (var (element, index) in _realized)
-        {
-            var top = element.TransformToVisual(Scroller).TransformPoint(default).Y;
-            if (top <= probe && top + element.ActualHeight + PageSpacing > probe)
+            if (Math.Abs(Scroller.VerticalOffset - target) <= ScrollTolerance)
             {
-                if (ViewModel.CurrentPageNumber != index + 1)
+                // Arrivé à la page demandée : elle est déjà la page visible.
+                if (!e.IsIntermediate)
                 {
-                    ViewModel.CurrentPageNumber = index + 1;
+                    _scrollTarget = null;
                 }
 
                 return;
             }
+
+            // L'utilisateur fait défiler ailleurs (ou la page demandée était déjà à l'écran).
+            _scrollTarget = null;
+        }
+
+        // Pendant le défilement aussi (molette, glisser de la barre) : le numéro et la vignette suivent en direct.
+        UpdateVisiblePage();
+    }
+
+    /// <summary>
+    /// Page visible : celle qui occupe le premier quart de l'écran ; tout en bas du document, la dernière page (trop
+    /// courte, elle n'atteindrait jamais ce repère).
+    /// </summary>
+    private void UpdateVisiblePage()
+    {
+        int? visible = null;
+        if (Scroller.ScrollableHeight > 0 && Scroller.VerticalOffset >= Scroller.ScrollableHeight - ScrollTolerance)
+        {
+            visible = ViewModel.Pages.Count - 1;
+        }
+        else
+        {
+            var probe = Scroller.ViewportHeight / 4;
+            foreach (var (element, index) in _realized)
+            {
+                var top = element.TransformToVisual(Scroller).TransformPoint(default).Y;
+                if (top <= probe && top + element.ActualHeight + PageSpacing > probe)
+                {
+                    visible = index;
+                    break;
+                }
+            }
+        }
+
+        if (visible is { } page && page >= 0 && ViewModel.CurrentPageNumber != page + 1)
+        {
+            ViewModel.CurrentPageNumber = page + 1;
         }
     }
 
@@ -514,6 +548,47 @@ public sealed partial class DocumentView : UserControl
     }
 
     // ----- Vignettes -----
+
+    /// <summary>Sélection des vignettes posée par le code (elle n'est pas renvoyée au view-model).</summary>
+    private void SelectThumbnails(IReadOnlyList<int> selection)
+    {
+        _syncingSelection = true;
+        try
+        {
+            Thumbnails.SelectedItems.Clear();
+            foreach (var index in selection)
+            {
+                if (index >= 0 && index < ViewModel.Pages.Count)
+                {
+                    Thumbnails.SelectRange(new ItemIndexRange(index, 1));
+                }
+            }
+        }
+        finally
+        {
+            _syncingSelection = false;
+        }
+    }
+
+    /// <summary>
+    /// La page visible a changé et la sélection d'une page l'a suivie : la barre de sélection passe sur sa vignette,
+    /// qui défile à l'écran si besoin.
+    /// </summary>
+    private void OnSelectionFollowedPage()
+    {
+        try
+        {
+            SelectThumbnails(ViewModel.SelectedIndices);
+            if (ViewModel.SelectedIndices is [var index] && index < ViewModel.Pages.Count)
+            {
+                Thumbnails.ScrollIntoView(ViewModel.Pages[index]);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Vignette de la page visible non sélectionnée");
+        }
+    }
 
     private void OnThumbnailContainerContentChanging(ListViewBase sender, ContainerContentChangingEventArgs args)
     {

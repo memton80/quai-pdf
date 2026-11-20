@@ -32,7 +32,7 @@ Une page scannée (une simple image) n'a pas de texte à sélectionner. Si l'aut
 
 ## Modifier
 
-Les modifications s'appliquent aux **pages sélectionnées dans les vignettes** (clic, `Ctrl+clic`, `Maj+clic`), ou à la page affichée si rien n'est sélectionné. `Échap` dans les vignettes vide la sélection.
+La vignette de la page affichée est sélectionnée (barre de couleur à sa gauche) et suit le défilement. Les modifications s'appliquent aux **pages sélectionnées dans les vignettes** : la page affichée, ou plusieurs pages choisies avec `Ctrl+clic` / `Maj+clic` (une sélection de plusieurs pages reste en place quand les pages défilent). `Échap` dans les vignettes vide la sélection.
 
 | Action | Comment |
 |---|---|
