@@ -24,6 +24,12 @@ public sealed class AppPaths
 
     public string LogsDirectory => Path.Combine(Root, "logs");
 
+    /// <summary>Installateur de la mise à jour en cours (effacé au démarrage suivant).</summary>
+    public string UpdatesDirectory => Path.Combine(Root, "updates");
+
+    /// <summary>Document ouvert au moment d'une mise à jour : rouvert par la nouvelle version, puis effacé.</summary>
+    public string ReopenAfterUpdateFile => Path.Combine(UpdatesDirectory, "reopen.txt");
+
     public void EnsureCreated()
     {
         Directory.CreateDirectory(Root);

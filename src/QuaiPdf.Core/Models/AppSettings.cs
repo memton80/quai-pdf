@@ -16,6 +16,9 @@ public sealed class AppSettings
     /// <summary>Volet des vignettes affiché à gauche du document.</summary>
     public bool ShowThumbnails { get; set; } = true;
 
+    /// <summary>Au démarrage, demander à GitHub si une version plus récente est publiée (comme Quai).</summary>
+    public bool CheckForUpdates { get; set; } = true;
+
     public AppSettings Clone() => (AppSettings)MemberwiseClone();
 
     /// <summary>Ramène les valeurs dans leurs bornes (fichier modifié à la main, ancienne version…).</summary>
