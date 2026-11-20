@@ -150,10 +150,8 @@
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
 
-    <Style
-        x:Key="ZoomButtonStyle"
-        BasedOn="{StaticResource DefaultDropDownButtonStyle}"
-        TargetType="DropDownButton">
+    <!-- Sans BasedOn : le style par défaut de DropDownButton n'est pas accessible par sa clé depuis l'application. -->
+    <Style x:Key="ZoomButtonStyle" TargetType="DropDownButton">
         <Setter Property="MinWidth" Value="84" />
         <Setter Property="Height" Value="{StaticResource ToolbarControlHeight}" />
         <Setter Property="VerticalAlignment" Value="Center" />
