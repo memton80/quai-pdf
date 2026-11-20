@@ -144,11 +144,15 @@ internal sealed class DialogService : IDialogService
     {
         var root = Root ?? throw new InvalidOperationException("La fenêtre principale n'est pas prête.");
 
+        // Thème changé pendant que le dialogue est ouvert (depuis les réglages eux-mêmes) : le dialogue suit la fenêtre.
+        void FollowTheme(FrameworkElement sender, object args) => dialog.RequestedTheme = sender.ActualTheme;
+
         await _gate.WaitAsync();
         try
         {
             dialog.XamlRoot = root.XamlRoot;
             dialog.RequestedTheme = root.ActualTheme;
+            root.ActualThemeChanged += FollowTheme;
             if (dialog.Style is null && Application.Current.Resources.TryGetValue("DefaultContentDialogStyle", out var style))
             {
                 dialog.Style = style as Style;
@@ -159,6 +163,7 @@ internal sealed class DialogService : IDialogService
         }
         finally
         {
+            root.ActualThemeChanged -= FollowTheme;
             Current = null;
             _gate.Release();
         }
