@@ -43,7 +43,7 @@ La vignette de la page affichée est sélectionnée (barre de couleur à sa gauc
 | Extraire des pages dans un nouveau PDF | `Ctrl+E` |
 | Propriétés (titre, auteur…) | `Ctrl+D` |
 | Annuler / rétablir | `Ctrl+Z` / `Ctrl+Y` (30 étapes) |
-| Enregistrer / enregistrer sous | `Ctrl+S` / `Ctrl+Maj+S` |
+| Enregistrer / enregistrer sous | `Ctrl+S` / `Ctrl+Maj+S`, ou le bouton **Enregistrer** et sa flèche (sur un document en lecture seule, **Enregistrer** en fait une copie) |
 | Fermer le document | `Ctrl+W` |
 
 Rien n'est écrit sur le disque avant **Enregistrer**. Un astérisque devant le nom, dans la barre de titre, signale des modifications non enregistrées ; Quai PDF les propose à l'enregistrement avant de fermer le document ou la fenêtre.

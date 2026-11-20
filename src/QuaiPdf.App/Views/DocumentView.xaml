@@ -18,108 +18,130 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- Barre d'outils : les raccourcis clavier sont posés dans le code (DocumentView.xaml.cs). -->
-        <CommandBar x:Name="Toolbar" Style="{StaticResource ToolbarStyle}">
-            <AppBarButton
-                Command="{x:Bind ViewModel.OpenCommand}"
-                Label="{l:Str Key=Toolbar_Open}"
-                ToolTipService.ToolTip="{l:Str Key=Toolbar_OpenTooltip}">
-                <AppBarButton.Icon>
-                    <FontIcon Glyph="&#xE8E5;" />
-                </AppBarButton.Icon>
-            </AppBarButton>
-            <AppBarButton
-                Command="{x:Bind ViewModel.SaveCommand}"
-                Label="{l:Str Key=Toolbar_Save}"
-                ToolTipService.ToolTip="{l:Str Key=Toolbar_SaveTooltip}">
-                <AppBarButton.Icon>
-                    <FontIcon Glyph="&#xE74E;" />
-                </AppBarButton.Icon>
-            </AppBarButton>
-            <AppBarSeparator />
-            <AppBarButton
-                Command="{x:Bind ViewModel.UndoCommand}"
-                Label="{l:Str Key=Toolbar_Undo}"
-                ToolTipService.ToolTip="{l:Str Key=Toolbar_UndoTooltip}">
-                <AppBarButton.Icon>
-                    <FontIcon Glyph="&#xE7A7;" />
-                </AppBarButton.Icon>
-            </AppBarButton>
-            <AppBarButton
-                Command="{x:Bind ViewModel.RedoCommand}"
-                Label="{l:Str Key=Toolbar_Redo}"
-                ToolTipService.ToolTip="{l:Str Key=Toolbar_RedoTooltip}">
-                <AppBarButton.Icon>
-                    <FontIcon Glyph="&#xE7A6;" />
-                </AppBarButton.Icon>
-            </AppBarButton>
-            <AppBarSeparator />
-            <AppBarButton
-                Command="{x:Bind ViewModel.RotateLeftCommand}"
-                Label="{l:Str Key=Toolbar_RotateLeft}"
-                ToolTipService.ToolTip="{l:Str Key=Toolbar_RotateLeftTooltip}">
-                <AppBarButton.Icon>
+        <!--
+            Barre d'outils : boutons arrondis de Windows 11. « Enregistrer » est le bouton principal, en couleur
+            d'accent avec son menu, comme « Redémarrer maintenant » dans les réglages de Windows. Une tabulation pour
+            y entrer, puis les flèches. Les raccourcis clavier sont posés dans le code (DocumentView.xaml.cs).
+        -->
+        <ScrollViewer Style="{StaticResource ToolbarScrollerStyle}">
+            <StackPanel x:Name="Toolbar" Style="{StaticResource ToolbarStyle}">
+                <!-- Fichier -->
+                <Button
+                    Command="{x:Bind ViewModel.OpenCommand}"
+                    Style="{StaticResource ToolbarButtonStyle}"
+                    ToolTipService.ToolTip="{l:Str Key=Toolbar_OpenTooltip}">
+                    <StackPanel Style="{StaticResource ToolbarButtonContentStyle}">
+                        <FontIcon Glyph="&#xE8E5;" Style="{StaticResource ToolbarIconStyle}" />
+                        <TextBlock Text="{l:Str Key=Toolbar_Open}" />
+                    </StackPanel>
+                </Button>
+                <StackPanel Style="{StaticResource ToolbarSplitStyle}">
+                    <Button
+                        AutomationProperties.Name="{l:Str Key=Toolbar_Save}"
+                        Command="{x:Bind ViewModel.SaveOrCopyCommand}"
+                        Style="{StaticResource ToolbarAccentMainButtonStyle}"
+                        ToolTipService.ToolTip="{l:Str Key=Toolbar_SaveTooltip}">
+                        <StackPanel Style="{StaticResource ToolbarButtonContentStyle}">
+                            <FontIcon Glyph="&#xE74E;" Style="{StaticResource ToolbarIconStyle}" />
+                            <TextBlock Text="{l:Str Key=Toolbar_Save}" />
+                        </StackPanel>
+                    </Button>
+                    <Button
+                        AutomationProperties.Name="{l:Str Key=Toolbar_SaveMore}"
+                        IsEnabled="{x:Bind ViewModel.HasDocument, Mode=OneWay}"
+                        Style="{StaticResource ToolbarAccentMenuButtonStyle}"
+                        ToolTipService.ToolTip="{l:Str Key=Toolbar_SaveMore}">
+                        <FontIcon Glyph="&#xE70D;" Style="{StaticResource ToolbarChevronStyle}" />
+                        <Button.Flyout>
+                            <MenuFlyout Placement="BottomEdgeAlignedRight">
+                                <MenuFlyoutItem Command="{x:Bind ViewModel.SaveAsCommand}" Text="{l:Str Key=Toolbar_SaveAs}">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="&#xE792;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                            </MenuFlyout>
+                        </Button.Flyout>
+                    </Button>
+                </StackPanel>
+
+                <!-- Historique -->
+                <Rectangle Style="{StaticResource ToolbarSeparatorStyle}" />
+                <Button
+                    AutomationProperties.Name="{l:Str Key=Toolbar_Undo}"
+                    Command="{x:Bind ViewModel.UndoCommand}"
+                    Style="{StaticResource ToolbarIconButtonStyle}"
+                    ToolTipService.ToolTip="{l:Str Key=Toolbar_UndoTooltip}">
+                    <FontIcon Glyph="&#xE7A7;" Style="{StaticResource ToolbarIconStyle}" />
+                </Button>
+                <Button
+                    AutomationProperties.Name="{l:Str Key=Toolbar_Redo}"
+                    Command="{x:Bind ViewModel.RedoCommand}"
+                    Style="{StaticResource ToolbarIconButtonStyle}"
+                    ToolTipService.ToolTip="{l:Str Key=Toolbar_RedoTooltip}">
+                    <FontIcon Glyph="&#xE7A6;" Style="{StaticResource ToolbarIconStyle}" />
+                </Button>
+
+                <!-- Pages -->
+                <Rectangle Style="{StaticResource ToolbarSeparatorStyle}" />
+                <Button
+                    AutomationProperties.Name="{l:Str Key=Toolbar_RotateLeft}"
+                    Command="{x:Bind ViewModel.RotateLeftCommand}"
+                    Style="{StaticResource ToolbarIconButtonStyle}"
+                    ToolTipService.ToolTip="{l:Str Key=Toolbar_RotateLeftTooltip}">
                     <FontIcon Glyph="&#xE7AD;" Style="{StaticResource MirroredIconStyle}" />
-                </AppBarButton.Icon>
-            </AppBarButton>
-            <AppBarButton
-                Command="{x:Bind ViewModel.RotateRightCommand}"
-                Label="{l:Str Key=Toolbar_RotateRight}"
-                ToolTipService.ToolTip="{l:Str Key=Toolbar_RotateRightTooltip}">
-                <AppBarButton.Icon>
-                    <FontIcon Glyph="&#xE7AD;" />
-                </AppBarButton.Icon>
-            </AppBarButton>
-            <AppBarButton
-                Command="{x:Bind ViewModel.MoveUpCommand}"
-                Label="{l:Str Key=Toolbar_MoveUp}"
-                ToolTipService.ToolTip="{l:Str Key=Toolbar_MoveUpTooltip}">
-                <AppBarButton.Icon>
-                    <FontIcon Glyph="&#xE74A;" />
-                </AppBarButton.Icon>
-            </AppBarButton>
-            <AppBarButton
-                Command="{x:Bind ViewModel.MoveDownCommand}"
-                Label="{l:Str Key=Toolbar_MoveDown}"
-                ToolTipService.ToolTip="{l:Str Key=Toolbar_MoveDownTooltip}">
-                <AppBarButton.Icon>
-                    <FontIcon Glyph="&#xE74B;" />
-                </AppBarButton.Icon>
-            </AppBarButton>
-            <AppBarButton
-                Command="{x:Bind ViewModel.DeleteCommand}"
-                Label="{l:Str Key=Toolbar_Delete}"
-                ToolTipService.ToolTip="{l:Str Key=Toolbar_DeleteTooltip}">
-                <AppBarButton.Icon>
-                    <FontIcon Glyph="&#xE74D;" />
-                </AppBarButton.Icon>
-            </AppBarButton>
-            <AppBarButton
-                Command="{x:Bind ViewModel.InsertCommand}"
-                Label="{l:Str Key=Toolbar_Insert}"
-                ToolTipService.ToolTip="{l:Str Key=Toolbar_InsertTooltip}">
-                <AppBarButton.Icon>
-                    <FontIcon Glyph="&#xE710;" />
-                </AppBarButton.Icon>
-            </AppBarButton>
-            <AppBarButton
-                Command="{x:Bind ViewModel.ExtractCommand}"
-                Label="{l:Str Key=Toolbar_Extract}"
-                ToolTipService.ToolTip="{l:Str Key=Toolbar_ExtractTooltip}">
-                <AppBarButton.Icon>
-                    <FontIcon Glyph="&#xE8C8;" />
-                </AppBarButton.Icon>
-            </AppBarButton>
-            <AppBarSeparator />
-            <AppBarButton
-                Command="{x:Bind ViewModel.PreviousPageCommand}"
-                Label="{l:Str Key=Toolbar_PreviousPage}"
-                ToolTipService.ToolTip="{l:Str Key=Toolbar_PreviousPage}">
-                <AppBarButton.Icon>
-                    <FontIcon Glyph="&#xE70E;" />
-                </AppBarButton.Icon>
-            </AppBarButton>
-            <AppBarElementContainer VerticalContentAlignment="Center">
+                </Button>
+                <Button
+                    AutomationProperties.Name="{l:Str Key=Toolbar_RotateRight}"
+                    Command="{x:Bind ViewModel.RotateRightCommand}"
+                    Style="{StaticResource ToolbarIconButtonStyle}"
+                    ToolTipService.ToolTip="{l:Str Key=Toolbar_RotateRightTooltip}">
+                    <FontIcon Glyph="&#xE7AD;" Style="{StaticResource ToolbarIconStyle}" />
+                </Button>
+                <Button
+                    AutomationProperties.Name="{l:Str Key=Toolbar_MoveUp}"
+                    Command="{x:Bind ViewModel.MoveUpCommand}"
+                    Style="{StaticResource ToolbarIconButtonStyle}"
+                    ToolTipService.ToolTip="{l:Str Key=Toolbar_MoveUpTooltip}">
+                    <FontIcon Glyph="&#xE74A;" Style="{StaticResource ToolbarIconStyle}" />
+                </Button>
+                <Button
+                    AutomationProperties.Name="{l:Str Key=Toolbar_MoveDown}"
+                    Command="{x:Bind ViewModel.MoveDownCommand}"
+                    Style="{StaticResource ToolbarIconButtonStyle}"
+                    ToolTipService.ToolTip="{l:Str Key=Toolbar_MoveDownTooltip}">
+                    <FontIcon Glyph="&#xE74B;" Style="{StaticResource ToolbarIconStyle}" />
+                </Button>
+                <Button
+                    AutomationProperties.Name="{l:Str Key=Toolbar_Delete}"
+                    Command="{x:Bind ViewModel.DeleteCommand}"
+                    Style="{StaticResource ToolbarIconButtonStyle}"
+                    ToolTipService.ToolTip="{l:Str Key=Toolbar_DeleteTooltip}">
+                    <FontIcon Glyph="&#xE74D;" Style="{StaticResource ToolbarIconStyle}" />
+                </Button>
+                <Button
+                    AutomationProperties.Name="{l:Str Key=Toolbar_Insert}"
+                    Command="{x:Bind ViewModel.InsertCommand}"
+                    Style="{StaticResource ToolbarIconButtonStyle}"
+                    ToolTipService.ToolTip="{l:Str Key=Toolbar_InsertTooltip}">
+                    <FontIcon Glyph="&#xE710;" Style="{StaticResource ToolbarIconStyle}" />
+                </Button>
+                <Button
+                    AutomationProperties.Name="{l:Str Key=Toolbar_Extract}"
+                    Command="{x:Bind ViewModel.ExtractCommand}"
+                    Style="{StaticResource ToolbarIconButtonStyle}"
+                    ToolTipService.ToolTip="{l:Str Key=Toolbar_ExtractTooltip}">
+                    <FontIcon Glyph="&#xE8C8;" Style="{StaticResource ToolbarIconStyle}" />
+                </Button>
+
+                <!-- Navigation -->
+                <Rectangle Style="{StaticResource ToolbarSeparatorStyle}" />
+                <Button
+                    AutomationProperties.Name="{l:Str Key=Toolbar_PreviousPage}"
+                    Command="{x:Bind ViewModel.PreviousPageCommand}"
+                    Style="{StaticResource ToolbarIconButtonStyle}"
+                    ToolTipService.ToolTip="{l:Str Key=Toolbar_PreviousPage}">
+                    <FontIcon Glyph="&#xE70E;" Style="{StaticResource ToolbarIconStyle}" />
+                </Button>
                 <StackPanel Style="{StaticResource ToolbarGroupStyle}">
                     <NumberBox
                         x:Name="PageBox"
@@ -131,25 +153,23 @@
                         Value="{x:Bind ui:UiHelpers.ToDouble(ViewModel.CurrentPageNumber), Mode=OneWay}" />
                     <TextBlock Style="{StaticResource ToolbarTextStyle}" Text="{x:Bind ui:UiHelpers.PageCountText(ViewModel.PageCount), Mode=OneWay}" />
                 </StackPanel>
-            </AppBarElementContainer>
-            <AppBarButton
-                Command="{x:Bind ViewModel.NextPageCommand}"
-                Label="{l:Str Key=Toolbar_NextPage}"
-                ToolTipService.ToolTip="{l:Str Key=Toolbar_NextPage}">
-                <AppBarButton.Icon>
-                    <FontIcon Glyph="&#xE70D;" />
-                </AppBarButton.Icon>
-            </AppBarButton>
-            <AppBarSeparator />
-            <AppBarButton
-                Command="{x:Bind ViewModel.ZoomOutCommand}"
-                Label="{l:Str Key=Toolbar_ZoomOut}"
-                ToolTipService.ToolTip="{l:Str Key=Toolbar_ZoomOutTooltip}">
-                <AppBarButton.Icon>
-                    <FontIcon Glyph="&#xE71F;" />
-                </AppBarButton.Icon>
-            </AppBarButton>
-            <AppBarElementContainer VerticalContentAlignment="Center">
+                <Button
+                    AutomationProperties.Name="{l:Str Key=Toolbar_NextPage}"
+                    Command="{x:Bind ViewModel.NextPageCommand}"
+                    Style="{StaticResource ToolbarIconButtonStyle}"
+                    ToolTipService.ToolTip="{l:Str Key=Toolbar_NextPage}">
+                    <FontIcon Glyph="&#xE70D;" Style="{StaticResource ToolbarIconStyle}" />
+                </Button>
+
+                <!-- Zoom -->
+                <Rectangle Style="{StaticResource ToolbarSeparatorStyle}" />
+                <Button
+                    AutomationProperties.Name="{l:Str Key=Toolbar_ZoomOut}"
+                    Command="{x:Bind ViewModel.ZoomOutCommand}"
+                    Style="{StaticResource ToolbarIconButtonStyle}"
+                    ToolTipService.ToolTip="{l:Str Key=Toolbar_ZoomOutTooltip}">
+                    <FontIcon Glyph="&#xE71F;" Style="{StaticResource ToolbarIconStyle}" />
+                </Button>
                 <DropDownButton
                     AutomationProperties.Name="{l:Str Key=Toolbar_Zoom}"
                     Content="{x:Bind ViewModel.ZoomText, Mode=OneWay}"
@@ -187,59 +207,69 @@
                         </MenuFlyout>
                     </DropDownButton.Flyout>
                 </DropDownButton>
-            </AppBarElementContainer>
-            <AppBarButton
-                Command="{x:Bind ViewModel.ZoomInCommand}"
-                Label="{l:Str Key=Toolbar_ZoomIn}"
-                ToolTipService.ToolTip="{l:Str Key=Toolbar_ZoomInTooltip}">
-                <AppBarButton.Icon>
-                    <FontIcon Glyph="&#xE8A3;" />
-                </AppBarButton.Icon>
-            </AppBarButton>
-            <AppBarToggleButton
-                IsChecked="{x:Bind Settings.ShowThumbnails, Mode=TwoWay}"
-                Label="{l:Str Key=Toolbar_Thumbnails}"
-                ToolTipService.ToolTip="{l:Str Key=Toolbar_Thumbnails}">
-                <AppBarToggleButton.Icon>
-                    <FontIcon Glyph="&#xE8A9;" />
-                </AppBarToggleButton.Icon>
-            </AppBarToggleButton>
+                <Button
+                    AutomationProperties.Name="{l:Str Key=Toolbar_ZoomIn}"
+                    Command="{x:Bind ViewModel.ZoomInCommand}"
+                    Style="{StaticResource ToolbarIconButtonStyle}"
+                    ToolTipService.ToolTip="{l:Str Key=Toolbar_ZoomInTooltip}">
+                    <FontIcon Glyph="&#xE8A3;" Style="{StaticResource ToolbarIconStyle}" />
+                </Button>
 
-            <CommandBar.SecondaryCommands>
-                <AppBarButton Command="{x:Bind ViewModel.CopyTextCommand}" Label="{l:Str Key=Text_Copy}">
-                    <AppBarButton.Icon>
-                        <FontIcon Glyph="&#xE8C8;" />
-                    </AppBarButton.Icon>
-                </AppBarButton>
-                <AppBarButton Command="{x:Bind ViewModel.SelectAllTextCommand}" Label="{l:Str Key=Text_SelectAll}">
-                    <AppBarButton.Icon>
-                        <FontIcon Glyph="&#xE8B3;" />
-                    </AppBarButton.Icon>
-                </AppBarButton>
-                <AppBarSeparator />
-                <AppBarButton Command="{x:Bind ViewModel.SaveAsCommand}" Label="{l:Str Key=Toolbar_SaveAs}">
-                    <AppBarButton.Icon>
-                        <FontIcon Glyph="&#xE792;" />
-                    </AppBarButton.Icon>
-                </AppBarButton>
-                <AppBarButton Command="{x:Bind ViewModel.EditPropertiesCommand}" Label="{l:Str Key=Toolbar_Properties}">
-                    <AppBarButton.Icon>
-                        <FontIcon Glyph="&#xE946;" />
-                    </AppBarButton.Icon>
-                </AppBarButton>
-                <AppBarButton Command="{x:Bind ViewModel.CloseDocumentCommand}" Label="{l:Str Key=Toolbar_Close}">
-                    <AppBarButton.Icon>
-                        <FontIcon Glyph="&#xE711;" />
-                    </AppBarButton.Icon>
-                </AppBarButton>
-                <AppBarSeparator />
-                <AppBarButton Click="OnSettingsClick" Label="{l:Str Key=Toolbar_Settings}">
-                    <AppBarButton.Icon>
-                        <FontIcon Glyph="&#xE713;" />
-                    </AppBarButton.Icon>
-                </AppBarButton>
-            </CommandBar.SecondaryCommands>
-        </CommandBar>
+                <!-- Affichage et autres commandes -->
+                <Rectangle Style="{StaticResource ToolbarSeparatorStyle}" />
+                <ToggleButton
+                    IsChecked="{x:Bind Settings.ShowThumbnails, Mode=TwoWay}"
+                    Style="{StaticResource ToolbarToggleButtonStyle}"
+                    ToolTipService.ToolTip="{l:Str Key=Toolbar_ThumbnailsTooltip}">
+                    <StackPanel Style="{StaticResource ToolbarButtonContentStyle}">
+                        <FontIcon Glyph="&#xE8A9;" Style="{StaticResource ToolbarIconStyle}" />
+                        <TextBlock Text="{l:Str Key=Toolbar_Thumbnails}" />
+                    </StackPanel>
+                </ToggleButton>
+                <Button
+                    AutomationProperties.Name="{l:Str Key=Toolbar_More}"
+                    Style="{StaticResource ToolbarIconButtonStyle}"
+                    ToolTipService.ToolTip="{l:Str Key=Toolbar_More}">
+                    <FontIcon Glyph="&#xE712;" Style="{StaticResource ToolbarIconStyle}" />
+                    <Button.Flyout>
+                        <MenuFlyout Placement="BottomEdgeAlignedRight">
+                            <MenuFlyoutItem Command="{x:Bind ViewModel.CopyTextCommand}" Text="{l:Str Key=Text_Copy}">
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon Glyph="&#xE8C8;" />
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutItem Command="{x:Bind ViewModel.SelectAllTextCommand}" Text="{l:Str Key=Text_SelectAll}">
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon Glyph="&#xE8B3;" />
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutSeparator />
+                            <MenuFlyoutItem Command="{x:Bind ViewModel.SaveAsCommand}" Text="{l:Str Key=Toolbar_SaveAs}">
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon Glyph="&#xE792;" />
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutItem Command="{x:Bind ViewModel.EditPropertiesCommand}" Text="{l:Str Key=Toolbar_Properties}">
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon Glyph="&#xE946;" />
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutItem Command="{x:Bind ViewModel.CloseDocumentCommand}" Text="{l:Str Key=Toolbar_Close}">
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon Glyph="&#xE711;" />
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutSeparator />
+                            <MenuFlyoutItem Click="OnSettingsClick" Text="{l:Str Key=Toolbar_Settings}">
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon Glyph="&#xE713;" />
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                        </MenuFlyout>
+                    </Button.Flyout>
+                </Button>
+            </StackPanel>
+        </ScrollViewer>
 
         <!-- Opération en cours, puis document en lecture seule. -->
         <StackPanel Grid.Row="1">

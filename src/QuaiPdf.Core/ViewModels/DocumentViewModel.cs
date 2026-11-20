@@ -262,6 +262,24 @@ public sealed partial class DocumentViewModel : ObservableObject, IDisposable
     [RelayCommand(CanExecute = nameof(CanSaveAs))]
     private Task SaveAsAsync() => SaveAsCoreAsync();
 
+    /// <summary>
+    /// Bouton principal « Enregistrer » de la barre d'outils, actif dès qu'un document est ouvert : enregistre les
+    /// modifications ; sur un document en lecture seule, en fait une copie (« Enregistrer sous ») ; sans modification,
+    /// il n'y a rien à écrire.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(HasDocument))]
+    private Task SaveOrCopyAsync()
+    {
+        if (IsBusy)
+        {
+            return Task.CompletedTask;
+        }
+
+        return CanSave() ? SaveCoreAsync()
+            : IsReadOnly ? SaveAsCoreAsync()
+            : Task.CompletedTask;
+    }
+
     [RelayCommand(CanExecute = nameof(CanSaveAs))]
     private async Task CloseDocumentAsync()
     {
@@ -857,6 +875,7 @@ public sealed partial class DocumentViewModel : ObservableObject, IDisposable
         OpenCommand.NotifyCanExecuteChanged();
         SaveCommand.NotifyCanExecuteChanged();
         SaveAsCommand.NotifyCanExecuteChanged();
+        SaveOrCopyCommand.NotifyCanExecuteChanged();
         CloseDocumentCommand.NotifyCanExecuteChanged();
         UndoCommand.NotifyCanExecuteChanged();
         RedoCommand.NotifyCanExecuteChanged();

@@ -11,17 +11,105 @@
     <Thickness x:Key="ReaderPadding">24,24,24,24</Thickness>
     <x:Double x:Key="PageSpacing">16</x:Double>
 
-    <!-- Barre d'outils : à gauche, sous la barre de titre. -->
-    <Style x:Key="ToolbarStyle" TargetType="CommandBar">
-        <Setter Property="HorizontalAlignment" Value="Left" />
-        <Setter Property="DefaultLabelPosition" Value="Collapsed" />
-        <Setter Property="IsDynamicOverflowEnabled" Value="True" />
-        <Setter Property="Margin" Value="8,0,8,4" />
-        <Setter Property="Background" Value="Transparent" />
+    <!--
+        Barre d'outils, sous la barre de titre : boutons arrondis de Windows 11 (fond, bordure, coins de 4 px), tous
+        de 32 px de haut. Fenêtre trop étroite : la barre défile horizontalement.
+    -->
+    <x:Double x:Key="ToolbarControlHeight">32</x:Double>
+
+    <Style x:Key="ToolbarScrollerStyle" TargetType="ScrollViewer">
+        <Setter Property="Margin" Value="12,4,12,8" />
+        <Setter Property="HorizontalScrollMode" Value="Auto" />
+        <Setter Property="HorizontalScrollBarVisibility" Value="Auto" />
+        <Setter Property="VerticalScrollMode" Value="Disabled" />
+        <Setter Property="VerticalScrollBarVisibility" Value="Disabled" />
+        <Setter Property="IsTabStop" Value="False" />
+    </Style>
+
+    <!-- Une seule tabulation pour entrer dans la barre, puis les flèches d'un bouton à l'autre (comme une CommandBar). -->
+    <Style x:Key="ToolbarStyle" TargetType="StackPanel">
+        <Setter Property="Orientation" Value="Horizontal" />
+        <Setter Property="Spacing" Value="4" />
+        <Setter Property="XYFocusKeyboardNavigation" Value="Enabled" />
+        <Setter Property="TabFocusNavigation" Value="Once" />
+    </Style>
+
+    <Style
+        x:Key="ToolbarButtonStyle"
+        BasedOn="{StaticResource DefaultButtonStyle}"
+        TargetType="Button">
+        <Setter Property="Height" Value="{StaticResource ToolbarControlHeight}" />
+        <Setter Property="Padding" Value="12,0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <!-- Icône seule : un rectangle arrondi un peu plus large que haut, le texte est dans l'infobulle. -->
+    <Style
+        x:Key="ToolbarIconButtonStyle"
+        BasedOn="{StaticResource ToolbarButtonStyle}"
+        TargetType="Button">
+        <Setter Property="Width" Value="40" />
+        <Setter Property="Padding" Value="0" />
+    </Style>
+
+    <Style
+        x:Key="ToolbarToggleButtonStyle"
+        BasedOn="{StaticResource DefaultToggleButtonStyle}"
+        TargetType="ToggleButton">
+        <Setter Property="Height" Value="{StaticResource ToolbarControlHeight}" />
+        <Setter Property="Padding" Value="12,0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <!--
+        Bouton principal en deux parties, couleur d'accent (comme « Redémarrer maintenant » dans les réglages de
+        Windows) : l'action à gauche, son menu à droite, séparés d'un trait. Deux boutons d'accent standard joints
+        plutôt qu'un SplitButton : WinUI n'a pas de style d'accent pour SplitButton (voir docs/DECISIONS.md).
+    -->
+    <Style x:Key="ToolbarSplitStyle" TargetType="StackPanel">
+        <Setter Property="Orientation" Value="Horizontal" />
+        <Setter Property="Spacing" Value="1" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style
+        x:Key="ToolbarAccentMainButtonStyle"
+        BasedOn="{StaticResource AccentButtonStyle}"
+        TargetType="Button">
+        <Setter Property="Height" Value="{StaticResource ToolbarControlHeight}" />
+        <Setter Property="Padding" Value="12,0" />
+        <Setter Property="CornerRadius" Value="4,0,0,4" />
+    </Style>
+
+    <Style
+        x:Key="ToolbarAccentMenuButtonStyle"
+        BasedOn="{StaticResource AccentButtonStyle}"
+        TargetType="Button">
+        <Setter Property="Height" Value="{StaticResource ToolbarControlHeight}" />
+        <Setter Property="Width" Value="36" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="CornerRadius" Value="0,4,4,0" />
+    </Style>
+
+    <!-- Contenu d'un bouton : icône puis texte. -->
+    <Style x:Key="ToolbarButtonContentStyle" TargetType="StackPanel">
+        <Setter Property="Orientation" Value="Horizontal" />
+        <Setter Property="Spacing" Value="8" />
+    </Style>
+
+    <Style x:Key="ToolbarIconStyle" TargetType="FontIcon">
+        <Setter Property="FontSize" Value="16" />
+    </Style>
+
+    <Style x:Key="ToolbarChevronStyle" TargetType="FontIcon">
+        <Setter Property="FontSize" Value="12" />
     </Style>
 
     <!-- Bouton pivoter à gauche : même icône que « pivoter à droite », en miroir. -->
-    <Style x:Key="MirroredIconStyle" TargetType="FontIcon">
+    <Style
+        x:Key="MirroredIconStyle"
+        BasedOn="{StaticResource ToolbarIconStyle}"
+        TargetType="FontIcon">
         <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
         <Setter Property="RenderTransform">
             <Setter.Value>
@@ -30,10 +118,19 @@
         </Setter>
     </Style>
 
+    <!-- Trait vertical entre deux groupes de boutons. -->
+    <Style x:Key="ToolbarSeparatorStyle" TargetType="Rectangle">
+        <Setter Property="Width" Value="1" />
+        <Setter Property="Height" Value="20" />
+        <Setter Property="Margin" Value="4,0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Fill" Value="{ThemeResource DividerStrokeColorDefaultBrush}" />
+    </Style>
+
     <Style x:Key="ToolbarGroupStyle" TargetType="StackPanel">
         <Setter Property="Orientation" Value="Horizontal" />
         <Setter Property="Spacing" Value="6" />
-        <Setter Property="Margin" Value="4,0" />
+        <Setter Property="Margin" Value="2,0" />
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
 
@@ -53,9 +150,12 @@
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
 
-    <Style x:Key="ZoomButtonStyle" TargetType="DropDownButton">
+    <Style
+        x:Key="ZoomButtonStyle"
+        BasedOn="{StaticResource DefaultDropDownButtonStyle}"
+        TargetType="DropDownButton">
         <Setter Property="MinWidth" Value="84" />
-        <Setter Property="Margin" Value="4,0" />
+        <Setter Property="Height" Value="{StaticResource ToolbarControlHeight}" />
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
 

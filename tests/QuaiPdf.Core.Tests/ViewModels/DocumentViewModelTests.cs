@@ -366,6 +366,51 @@ public sealed class DocumentViewModelTests : IDisposable
     }
 
     [Fact]
+    public async Task SaveOrCopy_SavesChangesInPlace()
+    {
+        var path = await OpenSampleAsync(2);
+        Assert.True(_document.SaveOrCopyCommand.CanExecute(null));
+        await _document.RotateRightCommand.ExecuteAsync(null);
+
+        await _document.SaveOrCopyCommand.ExecuteAsync(null);
+
+        Assert.False(_document.IsModified);
+        Assert.Equal(path, _document.FilePath);
+        Assert.Equal([90, 0], PdfOperations.PageRotations(File.ReadAllBytes(path)));
+        Assert.Null(_files.SuggestedName);
+    }
+
+    [Fact]
+    public async Task SaveOrCopy_WithoutChanges_WritesNothing()
+    {
+        await OpenSampleAsync(1);
+        _files.SavePath = Path.Combine(_temp.Path, "copie.pdf");
+
+        await _document.SaveOrCopyCommand.ExecuteAsync(null);
+
+        Assert.Null(_files.SuggestedName);
+        Assert.False(File.Exists(_files.SavePath));
+    }
+
+    [Fact]
+    public async Task SaveOrCopy_ReadOnly_SavesACopy()
+    {
+        await _document.OpenFileAsync(Write("restreint.pdf", SamplePdf.Create(1, ownerPassword: "proprio")));
+        _files.SavePath = Path.Combine(_temp.Path, "copie.pdf");
+
+        await _document.SaveOrCopyCommand.ExecuteAsync(null);
+
+        Assert.Equal("restreint.pdf", _files.SuggestedName);
+        Assert.True(File.Exists(_files.SavePath));
+    }
+
+    [Fact]
+    public void SaveOrCopy_IsDisabledWithoutDocument()
+    {
+        Assert.False(_document.SaveOrCopyCommand.CanExecute(null));
+    }
+
+    [Fact]
     public async Task ConfirmClose_CancelKeepsDocument()
     {
         await OpenSampleAsync(2);
