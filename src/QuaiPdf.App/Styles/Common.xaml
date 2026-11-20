@@ -59,6 +59,16 @@
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
 
+    <!-- Bandeau « nouvelle version disponible », sous la barre de titre. -->
+    <Style x:Key="UpdateInfoBarStyle" TargetType="InfoBar">
+        <Setter Property="Margin" Value="12,0,12,8" />
+        <Setter Property="IsClosable" Value="True" />
+    </Style>
+
+    <Style x:Key="UpdateProgressStyle" TargetType="ProgressBar">
+        <Setter Property="Margin" Value="0,0,0,12" />
+    </Style>
+
     <!-- Bandeau sous la barre d'outils (lecture seule). -->
     <Style x:Key="DocumentInfoBarStyle" TargetType="InfoBar">
         <Setter Property="Margin" Value="12,0,12,8" />

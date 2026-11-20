@@ -11,6 +11,9 @@ public static class UiHelpers
 
     public static Visibility CollapsedIf(bool value) => value ? Visibility.Collapsed : Visibility.Visible;
 
+    public static Microsoft.UI.Xaml.Controls.InfoBarSeverity WarningIf(bool value) =>
+        value ? Microsoft.UI.Xaml.Controls.InfoBarSeverity.Warning : Microsoft.UI.Xaml.Controls.InfoBarSeverity.Informational;
+
     /// <summary>Un entier pour une propriété <see cref="double"/> (<c>NumberBox.Value</c>).</summary>
     public static double ToDouble(int value) => value;
 

@@ -294,4 +294,52 @@
   <data name="Text_SelectAll" xml:space="preserve">
     <value>Tout sélectionner (Ctrl+A)</value>
   </data>
+  <data name="Update_Title" xml:space="preserve">
+    <value>Mise à jour disponible</value>
+  </data>
+  <data name="Update_Message" xml:space="preserve">
+    <value>Quai PDF {0} est disponible (vous avez la version {1}).</value>
+  </data>
+  <data name="Update_Download" xml:space="preserve">
+    <value>Télécharger</value>
+  </data>
+  <data name="Update_Install" xml:space="preserve">
+    <value>Mettre à jour</value>
+  </data>
+  <data name="Update_Cancel" xml:space="preserve">
+    <value>Annuler</value>
+  </data>
+  <data name="Update_Retry" xml:space="preserve">
+    <value>Réessayer</value>
+  </data>
+  <data name="Update_Downloading" xml:space="preserve">
+    <value>Téléchargement de Quai PDF {0}…</value>
+  </data>
+  <data name="Update_Installing" xml:space="preserve">
+    <value>Quai PDF {0} est téléchargé et vérifié : Quai PDF se ferme pour l'installer, puis redémarre tout seul et rouvre votre document.</value>
+  </data>
+  <data name="Update_Ready" xml:space="preserve">
+    <value>Quai PDF {0} est téléchargé. Cliquez sur « Mettre à jour » quand vous aurez fini avec votre document.</value>
+  </data>
+  <data name="Update_Failed" xml:space="preserve">
+    <value>La mise à jour vers Quai PDF {0} a échoué. {1}</value>
+  </data>
+  <data name="Update_FailedDownload" xml:space="preserve">
+    <value>Le téléchargement n'a pas abouti : vérifiez la connexion, puis réessayez.</value>
+  </data>
+  <data name="Update_FailedIntegrity" xml:space="preserve">
+    <value>Le fichier reçu ne correspond pas à celui publié : il a été supprimé sans être exécuté.</value>
+  </data>
+  <data name="Update_FailedInstall" xml:space="preserve">
+    <value>L'installateur n'a pas pu être lancé.</value>
+  </data>
+  <data name="Update_ProgressName" xml:space="preserve">
+    <value>Progression du téléchargement de la mise à jour</value>
+  </data>
+  <data name="Settings_Updates" xml:space="preserve">
+    <value>Rechercher les mises à jour</value>
+  </data>
+  <data name="Settings_UpdatesDescription" xml:space="preserve">
+    <value>Au démarrage, Quai PDF demande à GitHub le numéro de la dernière version publiée (rien sur vous ni sur vos documents).</value>
+  </data>
 </root>

@@ -48,6 +48,16 @@ Les modifications s'appliquent aux **pages sélectionnées dans les vignettes** 
 
 Rien n'est écrit sur le disque avant **Enregistrer**. Un astérisque devant le nom, dans la barre de titre, signale des modifications non enregistrées ; Quai PDF les propose à l'enregistrement avant de fermer le document ou la fenêtre.
 
+## Mises à jour
+
+Quand une nouvelle version est publiée, un bandeau l'annonce en haut de la fenêtre. **Mettre à jour** :
+
+1. télécharge l'installateur (bouton **Annuler** pendant le téléchargement) et vérifie son empreinte SHA-256 : un fichier qui ne correspond pas à celui publié est supprimé sans être exécuté ;
+2. si le document a des modifications non enregistrées, propose de les enregistrer (**Annuler** : la mise à jour attend, déjà téléchargée) ;
+3. ferme Quai PDF, installe la nouvelle version sans rien demander, puis relance Quai PDF, qui rouvre votre document.
+
+Avec la version portable (zip), le bouton ouvre la page de la version sur GitHub.
+
 ## Lecture seule
 
 Certains documents s'affichent sans pouvoir être modifiés (un bandeau l'indique) :
@@ -59,7 +69,8 @@ Certains documents s'affichent sans pouvoir être modifiés (un bandeau l'indiqu
 
 - Réglages : `%LOCALAPPDATA%\QuaiPdf\settings.json` (thème, vignettes).
 - Journaux : `%LOCALAPPDATA%\QuaiPdf\logs` (7 jours). Ils contiennent les noms des fichiers ouverts, jamais leur contenu ni de mot de passe.
-- Quai PDF ne se connecte à rien.
+- Au démarrage, Quai PDF demande à GitHub le numéro de la dernière version publiée (rien sur vous ni sur vos documents). Désactivable dans les **Réglages**. C'est sa seule connexion.
+- Installateur d'une mise à jour : `%LOCALAPPDATA%\QuaiPdf\updates`, effacé au démarrage suivant.
 
 ## Limites actuelles
 

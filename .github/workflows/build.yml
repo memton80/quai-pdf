@@ -249,6 +249,75 @@ jobs:
             throw 'Test de fumée en échec.'
           }
 
+      # Le bouton « Mettre à jour » pour de vrai (repris de Quai) : Quai PDF installé, avec un document ouvert, se voit
+      # proposer l'installateur qui vient d'être construit (servi depuis le disque à la place de GitHub, avec sa vraie
+      # empreinte), le télécharge, le vérifie, le lance en silencieux et se ferme ; l'installateur doit réussir et
+      # relancer Quai PDF, qui rouvre le document.
+      - name: Mise à jour en place (téléchargement vérifié, installation silencieuse, relance)
+        if: matrix.platform == 'x64'
+        shell: pwsh
+        run: |
+          $out = Join-Path $env:RUNNER_TEMP 'update'
+          $exe = Join-Path $env:QUAI_PDF_INSTALL_DIR 'QuaiPdf.exe'
+          $setup = (Resolve-Path 'QuaiPdf-Setup-x64.exe').Path
+          $log = Join-Path $out 'data/logs/update-install.log'
+          $process = Start-Process -FilePath $exe -ArgumentList '--update-test', "`"$out`"", "`"$setup`"" -PassThru
+          $null = $process.Handle
+          $failure = $null
+          if (-not $process.WaitForExit(120000)) {
+            $process.Kill()
+            $failure = "Quai PDF ne s'est pas fermé pour installer la mise à jour (120 s)."
+          } elseif ($process.ExitCode -ne 0) {
+            $failure = "Quai PDF a quitté avec le code $($process.ExitCode) pendant la mise à jour."
+          } else {
+            $deadline = (Get-Date).AddSeconds(180)
+            $done = $false
+            $relaunched = @()
+            while ((Get-Date) -lt $deadline) {
+              $done = (Test-Path $log) -and (Select-String -Path $log -Pattern 'Installation process succeeded' -SimpleMatch -Quiet)
+              $relaunched = @(Get-Process -Name QuaiPdf -ErrorAction SilentlyContinue | Where-Object { $_.StartTime -gt $process.ExitTime })
+              if ($done -and $relaunched.Count -gt 0) { break }
+              Start-Sleep -Seconds 1
+            }
+            if (-not $done) { $failure = "L'installateur n'a pas terminé la mise à jour." }
+            elseif ($relaunched.Count -eq 0) { $failure = "Quai PDF n'a pas été relancé après la mise à jour." }
+            else {
+              # La nouvelle version sait qu'elle vient d'être relancée (--after-update) et rouvre le document.
+              # (expressions régulières : Serilog écrit les noms de fichiers entre guillemets)
+              $expected = @('Démarrage juste après une mise à jour', 'Document rouvert après la mise à jour \(.?avant-mise-a-jour\.pdf', 'Ouverture de .?avant-mise-a-jour\.pdf')
+              $missing = $expected
+              $deadline = (Get-Date).AddSeconds(30)
+              while ($missing -and (Get-Date) -lt $deadline) {
+                $logs = Get-ChildItem (Join-Path $out 'data/logs') -Filter 'quaipdf-*.log' -ErrorAction SilentlyContinue
+                $missing = @($expected | Where-Object { -not ($logs | Select-String -Pattern $_ -Quiet) })
+                if ($missing) { Start-Sleep -Seconds 1 }
+              }
+              if ($missing) { $failure = "Après la mise à jour, absent du journal : $($missing -join ' ; ')" }
+            }
+          }
+          if (Test-Path $log) {
+            Get-Content $log | Select-String -CaseSensitive -Pattern 'Setup command line:', 'RestartManager', 'Installation process', '-- Run entry --', 'Filename: ', 'Parameters: ', 'Process exit code' |
+              ForEach-Object { $_.Line }
+          }
+          # Arrêt des instances lancées après la fermeture pour mise à jour : un Quai PDF resté ouvert verrouille ses
+          # fichiers et ferait échouer la désinstallation qui suit.
+          if ($process.HasExited) {
+            $started = @(Get-Process -Name QuaiPdf -ErrorAction SilentlyContinue | Where-Object { $_.StartTime -gt $process.ExitTime })
+            if ($started) {
+              $started | Stop-Process -Force -ErrorAction SilentlyContinue
+              $started | Wait-Process -Timeout 30 -ErrorAction SilentlyContinue
+            }
+          }
+          if ($failure) {
+            if (Test-Path (Join-Path $out 'smoke-error.txt')) { Get-Content (Join-Path $out 'smoke-error.txt') }
+            Get-ChildItem (Join-Path $out 'data/logs') -Filter 'quaipdf-*.log' -ErrorAction SilentlyContinue | ForEach-Object { Get-Content $_.FullName -Tail 40 }
+            if (Test-Path $log) { Get-Content $log -Tail 40 }
+            throw $failure
+          }
+          $line = 'Mise à jour en place : installateur téléchargé et vérifié (SHA-256), installé en silencieux, Quai PDF relancé, document rouvert : OK'
+          $line
+          @('### Mise à jour en place', '', $line, '') | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
+
       - name: Captures du test de fumée
         if: always() && matrix.platform == 'x64'
         uses: actions/upload-artifact@v4
@@ -259,6 +328,9 @@ jobs:
             ${{ runner.temp }}/smoke/*.txt
             ${{ runner.temp }}/smoke/*.pdf
             ${{ runner.temp }}/smoke/data/logs/*.log
+            ${{ runner.temp }}/update/*.png
+            ${{ runner.temp }}/update/*.txt
+            ${{ runner.temp }}/update/data/logs/*.log
             ${{ runner.temp }}/install.log
           if-no-files-found: ignore
 

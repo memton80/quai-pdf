@@ -16,6 +16,10 @@
             <RadioButton Content="{l:Str Key=Settings_ThemeDark}" />
         </RadioButtons>
         <ToggleSwitch Header="{l:Str Key=Settings_Thumbnails}" IsOn="{x:Bind Settings.ShowThumbnails, Mode=TwoWay}" />
+        <StackPanel>
+            <ToggleSwitch Header="{l:Str Key=Settings_Updates}" IsOn="{x:Bind Settings.CheckForUpdates, Mode=TwoWay}" />
+            <TextBlock Style="{StaticResource DialogHintStyle}" Text="{l:Str Key=Settings_UpdatesDescription}" />
+        </StackPanel>
         <TextBlock Style="{StaticResource DialogHintStyle}" Text="{x:Bind ui:UiHelpers.VersionText(Settings.Version)}" />
         <TextBlock Style="{StaticResource DialogHintStyle}" Text="{x:Bind Settings.DataDirectory}" />
         <HyperlinkButton Click="OnOpenLogsClick" Content="{l:Str Key=Settings_OpenLogs}" />

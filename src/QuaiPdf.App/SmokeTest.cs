@@ -8,6 +8,7 @@ using QuaiPdf.App.Services;
 using QuaiPdf.Core.Pdf;
 using QuaiPdf.Core.Pdf.Text;
 using QuaiPdf.Core.Storage;
+using QuaiPdf.Core.Updates;
 using QuaiPdf.Core.ViewModels;
 
 namespace QuaiPdf.App;
@@ -21,6 +22,10 @@ namespace QuaiPdf.App;
 internal static class SmokeTest
 {
     private const string Switch = "--smoke-test";
+    private const string UpdateSwitch = "--update-test";
+
+    /// <summary>Version « plus récente » des tests : jamais publiée pour de vrai.</summary>
+    public const string ReleaseTag = "v99.0.0";
     private static readonly TimeSpan StepTimeout = TimeSpan.FromSeconds(30);
 
     public static bool TryGetOutputDirectory(out string directory)
@@ -37,6 +42,22 @@ internal static class SmokeTest
             ? Path.GetFullPath(args[index + 1])
             : Path.Combine(Path.GetTempPath(), "quaipdf-smoke");
         return true;
+    }
+
+    /// <summary>
+    /// Mise à jour en place (CI, repris de Quai) : <c>QuaiPdf.exe --update-test &lt;dossier&gt; &lt;installateur&gt;</c>.
+    /// Quai PDF, installé, se voit proposer cet installateur comme nouvelle version, le télécharge, le vérifie, le lance
+    /// en mode silencieux et se ferme ; le workflow vérifie ensuite que l'installateur a réussi, a relancé Quai PDF, et
+    /// que le document ouvert avant la mise à jour a été rouvert.
+    /// </summary>
+    public static bool TryGetUpdateTest(out string directory, out string installer)
+    {
+        var args = Environment.GetCommandLineArgs();
+        var index = Array.FindIndex(args, a => string.Equals(a, UpdateSwitch, StringComparison.OrdinalIgnoreCase));
+        var found = index >= 0 && index + 2 < args.Length;
+        directory = found ? Path.GetFullPath(args[index + 1]) : string.Empty;
+        installer = found ? Path.GetFullPath(args[index + 2]) : string.Empty;
+        return found;
     }
 
     public static void IsolateData(string directory) =>
@@ -133,6 +154,8 @@ internal static class SmokeTest
             await CaptureAsync(hwnd, directory, "5-sombre.png", report);
             settings.ThemeIndex = 0;
 
+            await UpdateBannerAsync(window, services, hwnd, directory, report);
+
             // Document protégé contre la modification : affiché en lecture seule.
             var restricted = Path.Combine(directory, "protege.pdf");
             File.WriteAllBytes(restricted, SampleDocument.Create(ownerPassword: "proprietaire"));
@@ -169,6 +192,72 @@ internal static class SmokeTest
 
             Fail(directory, ex);
         }
+    }
+
+    /// <summary>
+    /// Mise à jour en place : document ouvert, bandeau, téléchargement vérifié, installation silencieuse, fermeture.
+    /// La suite (installateur, relance, document rouvert) est vérifiée par le workflow.
+    /// </summary>
+    public static async Task RunUpdateAsync(MainWindow window, IServiceProvider services, ILogger logger, string directory)
+    {
+        var report = new List<string>();
+        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
+        try
+        {
+            Directory.CreateDirectory(directory);
+            await Task.Delay(1500);
+
+            // Document ouvert pendant la mise à jour : la nouvelle version doit le rouvrir.
+            var sample = Path.Combine(directory, "avant-mise-a-jour.pdf");
+            File.WriteAllBytes(sample, SampleDocument.Create());
+            var document = services.GetRequiredService<DocumentViewModel>();
+            Check(await WithTimeout(document.OpenFileAsync(sample), "ouverture"), "ouverture du document avant la mise à jour");
+
+            var banner = services.GetRequiredService<UpdateBannerViewModel>();
+            await banner.CheckAsync();
+            Check(banner.IsOpen, "le bandeau ne propose pas la nouvelle version");
+            Check(banner.CanInstallInPlace, "Quai PDF, lancé depuis son installation, ne propose pas la mise à jour en place (installation non reconnue ?)");
+            await Task.Delay(500);
+            await CaptureAsync(hwnd, directory, "update-available.png", report);
+
+            // Un clic : téléchargement (capturé en cours), vérification, installation silencieuse, fermeture.
+            var update = banner.ActAsync();
+            await WaitForAsync(() => !banner.IsDownloading || banner.Progress >= 25, "téléchargement de la mise à jour");
+            if (banner.IsDownloading)
+            {
+                await CaptureAsync(hwnd, directory, "update-downloading.png", report);
+            }
+
+            logger.LogInformation("Test de la mise à jour : installation lancée");
+            await update;
+            Check(!banner.HasFailed, $"mise à jour en échec : {banner.Message}");
+
+            // Normalement, Quai PDF est déjà en train de se fermer pour laisser la place à l'installateur.
+            File.WriteAllLines(Path.Combine(directory, "smoke-report.txt"), report);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Test de la mise à jour en échec");
+            TryWrite(Path.Combine(directory, "smoke-report.txt"), string.Join(Environment.NewLine, report));
+            Fail(directory, ex);
+        }
+    }
+
+    /// <summary>Bandeau de mise à jour : une release plus récente (fictive, sans réseau) l'affiche.</summary>
+    private static async Task UpdateBannerAsync(MainWindow window, IServiceProvider services, IntPtr hwnd, string directory, List<string> report)
+    {
+        var banner = services.GetRequiredService<UpdateBannerViewModel>();
+        await banner.CheckAsync();
+        Check(
+            banner.IsOpen && banner.ReleasePage?.AbsoluteUri == $"https://github.com/memton80/quai-pdf/releases/tag/{ReleaseTag}",
+            "le bandeau de mise à jour ne s'affiche pas pour une version plus récente");
+        Check(!banner.CanInstallInPlace, "release fictive sans installateur : le bouton doit ouvrir la page de la release");
+        await Task.Delay(800);
+        await CaptureAsync(hwnd, directory, "7-mise-a-jour.png", report);
+        banner.IsOpen = false;
+        await Task.Delay(300);
+        Check(window.Updates.IsOpen == false, "fermeture du bandeau de mise à jour");
+        report.Add("Bandeau de mise à jour : OK");
     }
 
     /// <summary>
@@ -331,4 +420,11 @@ internal static class SmokeTest
             }
         }
     }
+}
+
+/// <summary>Source de releases du test de fumée : une version plus récente, sans fichier, sans requête réseau.</summary>
+internal sealed class SmokeReleaseSource : IReleaseSource
+{
+    public Task<ReleaseInfo?> GetLatestAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<ReleaseInfo?>(new ReleaseInfo(SmokeTest.ReleaseTag, []));
 }

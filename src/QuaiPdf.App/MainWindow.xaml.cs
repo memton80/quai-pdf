@@ -23,6 +23,7 @@ public sealed partial class MainWindow : Window
     {
         var services = App.Current.Services;
         Document = services.GetRequiredService<DocumentViewModel>();
+        Updates = services.GetRequiredService<UpdateBannerViewModel>();
         _logger = services.GetRequiredService<ILogger<MainWindow>>();
         InitializeComponent();
 
@@ -48,6 +49,9 @@ public sealed partial class MainWindow : Window
     }
 
     public DocumentViewModel Document { get; }
+
+    /// <summary>Bandeau « nouvelle version disponible ».</summary>
+    public UpdateBannerViewModel Updates { get; }
 
     /// <summary>Contenu racine de la fenêtre (test de fumée).</summary>
     public FrameworkElement Root => RootGrid;
@@ -96,6 +100,29 @@ public sealed partial class MainWindow : Window
 
         _closeAllowed = true;
         Close();
+    }
+
+    /// <summary>
+    /// Fermeture pour installer une mise à jour : le document a déjà été proposé à l'enregistrement,
+    /// l'installateur attend que Quai PDF se termine puis le relance.
+    /// </summary>
+    internal void CloseForUpdate()
+    {
+        _closeAllowed = true;
+        Close();
+    }
+
+    /// <summary>Bouton du bandeau : mettre à jour (ou ouvrir la page de la release), ou annuler le téléchargement.</summary>
+    private async void OnUpdateActionClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            await Updates.ActAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Mise à jour interrompue");
+        }
     }
 
     private void ResizeForDpi(int width, int height)

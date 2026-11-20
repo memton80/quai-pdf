@@ -19,6 +19,7 @@ Avant d'écrire une brique toi-même, cherche une bibliothèque ou un composant 
 | DI, logs | `Microsoft.Extensions.*` + `Serilog` (fichier) |
 | Réglages | `System.Text.Json`, dossier `%LOCALAPPDATA%\QuaiPdf` |
 | Sélecteurs de fichiers | `Microsoft.Windows.Storage.Pickers` (Windows App SDK) |
+| Mises à jour | code de Quai (`Updates/`, `UpdateBannerViewModel`), `Semver`, releases GitHub de `memton80/quai-pdf` |
 | Tests | `xUnit` |
 
 ## Stack et cible
@@ -46,6 +47,7 @@ docs/DECISIONS.md          journal des choix techniques
 - Enregistrement atomique (fichier temporaire puis remplacement, `AtomicFile`).
 - Document protégé par mot de passe ou contre la modification : **lecture seule**, on ne retire jamais une protection en silence. Mot de passe en mémoire seulement, jamais écrit ni journalisé.
 - Ni contenu de document ni mot de passe dans les journaux.
+- Seule connexion : la vérification des mises à jour auprès de GitHub (désactivable, réglage `checkForUpdates`). Pas de télémétrie.
 
 ## Règle CSS / HTML
 
@@ -57,7 +59,7 @@ Fluent / Windows 11 : barre de commandes, Mica, coins arrondis, thèmes clair / 
 
 ## CI et releases (GitHub Actions uniquement)
 
-- `.github/workflows/build.yml` sur `windows-latest` : tests, publication x64 / arm64, vérification du contenu (aucun fichier web), zip, installateur, installation silencieuse, **test de fumée** sur l'application installée (`QuaiPdf.exe --smoke-test <dossier>`, captures en artefact), désinstallation complète.
+- `.github/workflows/build.yml` sur `windows-latest` : tests, publication x64 / arm64, vérification du contenu (aucun fichier web), zip, installateur, installation silencieuse, **test de fumée** sur l'application installée (`QuaiPdf.exe --smoke-test <dossier>`, captures en artefact), **mise à jour en place** (`--update-test` : téléchargement vérifié, installation silencieuse, relance, document rouvert), désinstallation complète.
 - Après chaque push, vérifie le résultat du run et corrige jusqu'à ce que ce soit vert. Ne déclare rien terminé tant que le CI n'est pas vert.
 - Release : automatique, comme Quai. Monter `<Version>` dans `Directory.Build.props` ; quand ce numéro arrive sur `main` sans tag, le CI crée le tag `vX.Y.Z` et publie la release.
 

@@ -36,9 +36,13 @@
 Quai PDF est une application Windows native (WinUI 3) : **aucune page web, aucun navigateur embarqué**. Les pages sont dessinées par le moteur PDF intégré à Windows, le texte est lu par [PDFium](https://pdfium.googlesource.com/pdfium/) (le moteur PDF de Chrome) et les modifications sont faites par [PDFsharp](https://github.com/empira/PDFsharp), une bibliothèque libre éprouvée. Rien n'est réinventé.
 
 - Les documents protégés par un mot de passe s'ouvrent en **lecture seule** : leur protection n'est jamais retirée sans que vous le sachiez. Le mot de passe n'est jamais enregistré.
-- **Aucune publicité, aucun pistage, aucun compte à créer.** Quai PDF ne se connecte à rien.
+- **Aucune publicité, aucun pistage, aucun compte à créer.** Quai PDF ne parle qu'à GitHub, pour savoir s'il existe une nouvelle version (désactivable).
 
 ![Quai PDF en thème sombre : les pages restent blanches, comme le papier](docs/images/sombre.png)
+
+## Toujours à jour, en un clic
+
+Comme [Quai](https://github.com/memton80/quai-ssh) : quand une nouvelle version sort, un bandeau la propose. Un clic sur **Mettre à jour** la télécharge, vérifie qu'elle est bien celle publiée, l'installe, puis Quai PDF redémarre tout seul et rouvre votre document (il propose d'abord d'enregistrer vos modifications).
 
 ## Installer Quai PDF
 

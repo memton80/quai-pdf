@@ -104,15 +104,24 @@ Root: HKA; Subkey: "Software\Classes\Applications\{#AppExe}\SupportedTypes"; Val
 
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent
+; Mise à jour lancée par Quai PDF lui-même (/SILENT /RELAUNCH=1) : la nouvelle version redémarre une fois installée.
+Filename: "{app}\{#AppExe}"; Parameters: "--after-update"; WorkingDir: "{app}"; Flags: nowait; Check: RelaunchRequested
 
 [UninstallDelete]
 ; Journaux : jamais conservés, ce ne sont pas des données de l'utilisateur.
 Type: filesandordirs; Name: "{localappdata}\{#DataDir}\logs"
+Type: filesandordirs; Name: "{localappdata}\{#DataDir}\updates"
 Type: dirifempty; Name: "{localappdata}\{#DataDir}"
 
 [Code]
 var
   RemoveUserData: Boolean;
+
+// Installation demandée par le bouton « Mettre à jour » de Quai PDF : relancer l'application à la fin.
+function RelaunchRequested(): Boolean;
+begin
+  Result := ExpandConstant('{param:RELAUNCH|0}') = '1';
+end;
 
 // Désinstallation : on demande s'il faut aussi effacer les réglages (non par défaut).
 // En mode silencieux, le paramètre /PURGE=1 répond « oui ».

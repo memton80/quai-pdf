@@ -3,6 +3,8 @@
     x:Class="QuaiPdf.App.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:l="using:QuaiPdf.App.Localization"
+    xmlns:ui="using:QuaiPdf.App"
     xmlns:views="using:QuaiPdf.App.Views">
 
     <Window.SystemBackdrop>
@@ -11,6 +13,7 @@
 
     <Grid x:Name="RootGrid">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
@@ -23,6 +26,32 @@
             </StackPanel>
         </Grid>
 
-        <views:DocumentView x:Name="DocumentHost" Grid.Row="1" />
+        <!--
+            Nouvelle version publiée sur GitHub (repris de Quai) : téléchargement, vérification, installation et
+            redémarrage. Fermé, le bandeau est retiré de la mise en page.
+        -->
+        <InfoBar
+            Grid.Row="1"
+            IsOpen="{x:Bind Updates.IsOpen, Mode=TwoWay}"
+            Message="{x:Bind Updates.Message, Mode=OneWay}"
+            Severity="{x:Bind ui:UiHelpers.WarningIf(Updates.HasFailed), Mode=OneWay}"
+            Style="{StaticResource UpdateInfoBarStyle}"
+            Title="{l:Str Key=Update_Title}"
+            Visibility="{x:Bind ui:UiHelpers.VisibleIf(Updates.IsOpen), Mode=OneWay}">
+            <InfoBar.ActionButton>
+                <Button
+                    Click="OnUpdateActionClick"
+                    Content="{x:Bind Updates.ActionText, Mode=OneWay}"
+                    IsEnabled="{x:Bind Updates.IsActionEnabled, Mode=OneWay}" />
+            </InfoBar.ActionButton>
+            <ProgressBar
+                AutomationProperties.Name="{l:Str Key=Update_ProgressName}"
+                Maximum="100"
+                Style="{StaticResource UpdateProgressStyle}"
+                Visibility="{x:Bind ui:UiHelpers.VisibleIf(Updates.IsDownloading), Mode=OneWay}"
+                Value="{x:Bind Updates.Progress, Mode=OneWay}" />
+        </InfoBar>
+
+        <views:DocumentView x:Name="DocumentHost" Grid.Row="2" />
     </Grid>
 </Window>
