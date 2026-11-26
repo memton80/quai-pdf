@@ -462,4 +462,49 @@
   <data name="Status_PageCount" xml:space="preserve">
     <value>sur {0}</value>
   </data>
+  <data name="Toolbar_TextTool" xml:space="preserve">
+    <value>Texte</value>
+  </data>
+  <data name="Toolbar_TextToolTooltip" xml:space="preserve">
+    <value>Ajouter du texte : cliquez sur une page pour y écrire (Échap pour arrêter). Double-clic sur une zone de texte pour la modifier, glisser pour la déplacer, Suppr pour l'effacer.</value>
+  </data>
+  <data name="Toolbar_TextStyle" xml:space="preserve">
+    <value>Taille et couleur du texte</value>
+  </data>
+  <data name="Toolbar_TextStyleTooltip" xml:space="preserve">
+    <value>Taille et couleur des zones de texte (la zone sélectionnée change aussi)</value>
+  </data>
+  <data name="TextStyle_Size" xml:space="preserve">
+    <value>Taille</value>
+  </data>
+  <data name="TextStyle_Color" xml:space="preserve">
+    <value>Couleur</value>
+  </data>
+  <data name="TextStyle_Points" xml:space="preserve">
+    <value>{0} pt</value>
+  </data>
+  <data name="TextColor_Black" xml:space="preserve">
+    <value>Noir</value>
+  </data>
+  <data name="TextColor_Red" xml:space="preserve">
+    <value>Rouge</value>
+  </data>
+  <data name="TextColor_Blue" xml:space="preserve">
+    <value>Bleu</value>
+  </data>
+  <data name="TextColor_Green" xml:space="preserve">
+    <value>Vert</value>
+  </data>
+  <data name="TextColor_Orange" xml:space="preserve">
+    <value>Orange</value>
+  </data>
+  <data name="TextBox_Delete" xml:space="preserve">
+    <value>Supprimer la zone de texte (Suppr)</value>
+  </data>
+  <data name="TextBox_Editor" xml:space="preserve">
+    <value>Zone de texte</value>
+  </data>
+  <data name="Status_TextTool" xml:space="preserve">
+    <value>Cliquez sur une page pour y écrire ; Échap pour arrêter</value>
+  </data>
 </root>

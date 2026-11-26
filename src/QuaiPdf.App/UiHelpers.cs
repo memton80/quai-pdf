@@ -23,6 +23,17 @@ public static class UiHelpers
     /// <summary>« sur 12 » à côté du numéro de page (barre d'état).</summary>
     public static string PageCountText(int count) => Loc.Format("Status_PageCount", count);
 
+    /// <summary>Pinceau de la couleur du texte des zones (pastille du bouton de style).</summary>
+    public static Microsoft.UI.Xaml.Media.SolidColorBrush ColorBrush(QuaiPdf.Core.Pdf.PdfTextStyle style) => Brush(style.Color);
+
+    public static Microsoft.UI.Xaml.Media.SolidColorBrush Brush(QuaiPdf.Core.Pdf.PdfColor color) =>
+        new(Windows.UI.Color.FromArgb(255, Channel(color.R), Channel(color.G), Channel(color.B)));
+
+    /// <summary>« 12 pt » : taille du texte des zones.</summary>
+    public static string FontSizeText(QuaiPdf.Core.Pdf.PdfTextStyle style) => Loc.Format("TextStyle_Points", style.FontSize);
+
+    private static byte Channel(double value) => (byte)Math.Round(Math.Clamp(value, 0, 1) * 255);
+
     /// <summary>Zoom en pourcentage, pour le curseur de la barre d'état (1,5 → 150).</summary>
     public static double ZoomPercent(double zoom) => Math.Round(zoom * 100);
 

@@ -520,6 +520,82 @@
         <Setter Property="IsHitTestVisible" Value="False" />
     </Style>
 
+    <!--
+        Zones de texte : calque au-dessus de la page, au même repère que le surlignage (100 %, mis à l'échelle). Seul
+        l'éditeur y reçoit la souris ; les contours laissent passer les clics vers la page.
+    -->
+    <Style x:Key="AnnotationLayerStyle" TargetType="Viewbox">
+        <Setter Property="Stretch" Value="Fill" />
+        <Setter Property="IsHitTestVisible" Value="True" />
+    </Style>
+
+    <!-- Contour de la zone de texte sélectionnée (pointillés de la couleur d'accent). -->
+    <Style x:Key="TextBoxSelectionStyle" TargetType="Rectangle">
+        <Setter Property="Stroke" Value="{ThemeResource AccentFillColorDefaultBrush}" />
+        <Setter Property="StrokeThickness" Value="1.5" />
+        <Setter Property="StrokeDashArray" Value="4,2" />
+        <Setter Property="IsHitTestVisible" Value="False" />
+    </Style>
+
+    <!-- Contour léger d'une zone de texte survolée. -->
+    <Style x:Key="TextBoxHoverStyle" TargetType="Rectangle">
+        <Setter Property="Stroke" Value="{ThemeResource AccentFillColorDefaultBrush}" />
+        <Setter Property="StrokeThickness" Value="1" />
+        <Setter Property="Opacity" Value="0.5" />
+        <Setter Property="IsHitTestVisible" Value="False" />
+    </Style>
+
+    <!--
+        Éditeur d'une zone de texte, posé sur la page : police proche d'Helvetica (celle de l'apparence écrite dans le
+        PDF), marge intérieure identique, fond blanc comme le papier (thème clair forcé par le code), lignes jamais
+        coupées automatiquement.
+    -->
+    <Style
+        x:Key="TextBoxEditorStyle"
+        BasedOn="{StaticResource DefaultTextBoxStyle}"
+        TargetType="TextBox">
+        <Setter Property="AcceptsReturn" Value="True" />
+        <Setter Property="TextWrapping" Value="NoWrap" />
+        <Setter Property="FontFamily" Value="Arial" />
+        <Setter Property="Padding" Value="2.67" />
+        <Setter Property="MinWidth" Value="0" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="0" />
+        <Setter Property="IsSpellCheckEnabled" Value="True" />
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Hidden" />
+        <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Hidden" />
+    </Style>
+
+    <!-- Bouton « Texte » de la barre de commandes (outil), plat comme les autres. -->
+    <Style
+        x:Key="ToolbarToggleButtonStyle"
+        BasedOn="{StaticResource DefaultToggleButtonStyle}"
+        TargetType="ToggleButton">
+        <Setter Property="Height" Value="{StaticResource ToolbarControlHeight}" />
+        <Setter Property="Padding" Value="12,0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+
+    <!-- Taille et couleur du texte : pastille de la couleur et taille en points. -->
+    <Style x:Key="TextStyleButtonStyle" TargetType="DropDownButton">
+        <Setter Property="Height" Value="{StaticResource ToolbarControlHeight}" />
+        <Setter Property="Padding" Value="8,0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+
+    <Style x:Key="TextStyleSwatchStyle" TargetType="Ellipse">
+        <Setter Property="Width" Value="12" />
+        <Setter Property="Height" Value="12" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Stroke" Value="{ThemeResource ControlStrokeColorDefaultBrush}" />
+        <Setter Property="StrokeThickness" Value="1" />
+    </Style>
+
     <!-- Une page : toujours blanche (comme le papier), quel que soit le thème. -->
     <Style x:Key="PageBorderStyle" TargetType="Border">
         <Setter Property="Background" Value="White" />

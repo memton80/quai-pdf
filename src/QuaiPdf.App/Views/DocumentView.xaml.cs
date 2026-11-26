@@ -1,6 +1,8 @@
 using System.ComponentModel;
+using System.Globalization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
@@ -11,10 +13,12 @@ using Rectangle = Microsoft.UI.Xaml.Shapes.Rectangle;
 using QuaiPdf.App.Localization;
 using QuaiPdf.App.Services;
 using QuaiPdf.Core.Models;
+using QuaiPdf.Core.Pdf;
 using QuaiPdf.Core.Pdf.Text;
 using QuaiPdf.Core.ViewModels;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.System;
+using Windows.UI.Core;
 using DispatcherQueuePriority = Microsoft.UI.Dispatching.DispatcherQueuePriority;
 using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
 
@@ -64,6 +68,14 @@ public sealed partial class DocumentView : UserControl
     // Dernière recherche lancée : Entrée de nouveau sur le même texte passe au résultat suivant.
     private string? _lastSearch;
 
+    // Zones de texte : déplacement en cours, zone survolée, éditeur ouvert.
+    private TextBoxDrag? _drag;
+    private PdfTextBox? _hover;
+    private TextBoxEditor? _editor;
+
+    // Un glisser plus court que ceci est un simple clic (la zone est sélectionnée, pas déplacée).
+    private const double DragThreshold = 3;
+
     /// <summary>Vue de l'onglet affiché (nécessaire au compilateur XAML ; la fenêtre passe toujours le document).</summary>
     public DocumentView()
         : this(App.Current.Services.GetRequiredService<WorkspaceViewModel>().Selected)
@@ -90,6 +102,7 @@ public sealed partial class DocumentView : UserControl
         ViewModel.RevealRequested += (_, e) => RevealArea(e.Page, e.Area);
         ViewModel.SelectionFollowedPage += (_, _) => OnSelectionFollowedPage();
         ViewModel.TextSelectionChanged += (_, _) => DrawVisibleSelections();
+        ViewModel.TextBoxesChanged += (_, _) => DrawVisibleTextBoxes();
         ViewModel.PropertyChanged += OnViewModelPropertyChanged;
         Settings.PropertyChanged += OnSettingsPropertyChanged;
 
@@ -113,6 +126,7 @@ public sealed partial class DocumentView : UserControl
     /// <summary>Vue retirée de la fenêtre (onglet fermé) : elle ne suit plus les réglages communs.</summary>
     public void Detach()
     {
+        _ = CloseTextBoxEditorAsync(cancel: true);
         Settings.PropertyChanged -= OnSettingsPropertyChanged;
         ViewModel.PropertyChanged -= OnViewModelPropertyChanged;
         _zoomTimer.Stop();
@@ -195,6 +209,7 @@ public sealed partial class DocumentView : UserControl
     {
         SelectThumbnails(e.Selection);
         RenderVisiblePages();
+        DrawVisibleTextBoxes();
         RenderVisibleThumbnails();
         RefreshPanel();
 
@@ -364,6 +379,7 @@ public sealed partial class DocumentView : UserControl
             _realized[element] = args.Index;
             _ = RenderPageAsync(element, args.Index);
             DrawSelection(element, args.Index);
+            DrawTextBoxes(element, args.Index);
         }
     }
 
@@ -374,6 +390,7 @@ public sealed partial class DocumentView : UserControl
             _realized[element] = args.NewIndex;
             _ = RenderPageAsync(element, args.NewIndex);
             DrawSelection(element, args.NewIndex);
+            DrawTextBoxes(element, args.NewIndex);
         }
     }
 
@@ -381,8 +398,15 @@ public sealed partial class DocumentView : UserControl
     {
         if (args.Element is FrameworkElement element)
         {
+            // Page qui quitte l'écran avec son éditeur ouvert : le texte tapé est gardé.
+            if (_editor?.Element == element)
+            {
+                _ = CloseTextBoxEditorAsync();
+            }
+
             _realized.Remove(element);
             element.Tag = null;
+            AnnotationLayer(element)?.Children.Clear();
             if (PageImage(element) is { } image)
             {
                 image.Source = null;
@@ -436,6 +460,12 @@ public sealed partial class DocumentView : UserControl
             ? canvas
             : null;
 
+    // Une page : Border > TextPageSurface > [Image, Viewbox > Canvas (surlignage), Viewbox > Canvas (zones de texte)].
+    private static Canvas? AnnotationLayer(FrameworkElement element) =>
+        element is Border { Child: TextPageSurface surface } && surface.Children.Count > 2 && surface.Children[2] is Viewbox { Child: Canvas canvas }
+            ? canvas
+            : null;
+
     // ----- Texte : sélection à la souris, surlignage -----
 
     private void OnPagesPointerPressed(object sender, PointerRoutedEventArgs e)
@@ -447,11 +477,18 @@ public sealed partial class DocumentView : UserControl
             return;
         }
 
-        // Le clavier suit la lecture (Ctrl+C, Ctrl+A, Échap), même si la case du numéro de page avait le focus.
+        // Le clavier suit la lecture (Ctrl+C, Ctrl+A, Échap, Suppr), même si un champ avait le focus. Un éditeur de zone
+        // de texte ouvert perd le focus : son texte est enregistré.
         Scroller.Focus(FocusState.Pointer);
         if (PageUnder(e) is not { } hit)
         {
             ViewModel.ClearTextSelection();
+            return;
+        }
+
+        if (PressTextBox(hit.Index, hit.Point, e))
+        {
+            e.Handled = true;
             return;
         }
 
@@ -465,8 +502,16 @@ public sealed partial class DocumentView : UserControl
 
     private void OnPagesPointerMoved(object sender, PointerRoutedEventArgs e)
     {
+        if (_drag is not null)
+        {
+            DragTextBox(e);
+            e.Handled = true;
+            return;
+        }
+
         if (!_selectingText)
         {
+            HoverTextBox(e);
             return;
         }
 
@@ -488,6 +533,22 @@ public sealed partial class DocumentView : UserControl
 
     private void OnPagesPointerReleased(object sender, PointerRoutedEventArgs e)
     {
+        if (_drag is { } drag)
+        {
+            _drag = null;
+            PagesRepeater.ReleasePointerCapture(e.Pointer);
+            if (drag.Moved && drag.Target is { } target)
+            {
+                _ = MoveTextBoxAsync(drag.Box, target);
+            }
+            else
+            {
+                DrawVisibleTextBoxes();
+            }
+
+            return;
+        }
+
         if (_selectingText)
         {
             _selectingText = false;
@@ -499,17 +560,45 @@ public sealed partial class DocumentView : UserControl
     {
         if (PageUnder(e.GetPosition) is { } hit)
         {
-            ViewModel.SelectWordAt(hit.Index, hit.Point);
+            // Double-clic sur une zone de texte : on la modifie ; ailleurs, on sélectionne un mot.
+            if (ViewModel.CanEdit && ViewModel.TextBoxAt(hit.Index, hit.Point) is { CanEditText: true } box)
+            {
+                OpenTextBoxEditor(box.Page, box, new PdfPoint(box.Area.X, box.Area.Y));
+            }
+            else
+            {
+                ViewModel.SelectWordAt(hit.Index, hit.Point);
+            }
+
             e.Handled = true;
         }
     }
 
     private void OnScrollerKeyDown(object sender, KeyRoutedEventArgs e)
     {
-        if (e.Key == VirtualKey.Escape && ViewModel.HasTextSelection)
+        var box = ViewModel.SelectedTextBox;
+        switch (e.Key)
         {
-            ViewModel.ClearTextSelection();
-            e.Handled = true;
+            case VirtualKey.Delete when box is { CanDelete: true } && ViewModel.CanEdit:
+                _ = ViewModel.DeleteSelectedTextBoxCommand.ExecuteAsync(null);
+                e.Handled = true;
+                break;
+            case VirtualKey.Enter or VirtualKey.F2 when box is { CanEditText: true } && ViewModel.CanEdit:
+                OpenTextBoxEditor(box.Page, box, new PdfPoint(box.Area.X, box.Area.Y));
+                e.Handled = true;
+                break;
+            case VirtualKey.Escape when box is not null:
+                ViewModel.SelectTextBox(null);
+                e.Handled = true;
+                break;
+            case VirtualKey.Escape when ViewModel.IsTextToolActive:
+                ViewModel.IsTextToolActive = false;
+                e.Handled = true;
+                break;
+            case VirtualKey.Escape when ViewModel.HasTextSelection:
+                ViewModel.ClearTextSelection();
+                e.Handled = true;
+                break;
         }
     }
 
@@ -926,6 +1015,360 @@ public sealed partial class DocumentView : UserControl
         if (ViewModel.HasDocument && Math.Abs((e.NewValue / 100) - ViewModel.Zoom) > 0.005)
         {
             ViewModel.Zoom = e.NewValue / 100;
+        }
+    }
+
+    // ----- Zones de texte -----
+
+    /// <summary>Zone en cours de déplacement : point de départ, et coin haut gauche visé (pixels à 100 %).</summary>
+    private sealed class TextBoxDrag(PdfTextBox box, FrameworkElement element, PdfPoint start)
+    {
+        public PdfTextBox Box { get; } = box;
+
+        public FrameworkElement Element { get; } = element;
+
+        public PdfPoint Start { get; } = start;
+
+        public bool Moved { get; set; }
+
+        public PdfPoint? Target { get; set; }
+    }
+
+    /// <summary>Éditeur posé sur une page : zone modifiée (ou <c>null</c> pour une nouvelle), place, contenu d'origine.</summary>
+    private sealed record TextBoxEditor(
+        TextBox Box, int Page, PdfTextBox? Existing, PdfPoint TopLeft, FrameworkElement Element, byte[]? Content, PdfTextStyle Style);
+
+    /// <summary>Éditeur de zone de texte ouvert (test de fumée).</summary>
+    internal bool IsEditingTextBox => _editor is not null;
+
+    /// <summary>Contours de zones de texte dessinés à l'écran (test de fumée).</summary>
+    internal int TextBoxOutlineCount => _realized.Keys.Sum(e => AnnotationLayer(e)?.Children.OfType<Rectangle>().Count() ?? 0);
+
+    /// <summary>Ouvre l'éditeur et y tape un texte, comme l'utilisateur (test de fumée).</summary>
+    internal bool TypeInTextBoxEditor(int page, PdfTextBox? existing, PdfPoint topLeft, string text)
+    {
+        OpenTextBoxEditor(page, existing, topLeft);
+        if (_editor is not { } editor)
+        {
+            return false;
+        }
+
+        editor.Box.Text = text;
+        return true;
+    }
+
+    /// <summary>Ferme l'éditeur en gardant le texte (test de fumée ; d'ordinaire, un clic ailleurs).</summary>
+    internal Task CommitTextBoxEditorAsync() => CloseTextBoxEditorAsync();
+
+    /// <summary>
+    /// Appui sur une page, avant la sélection de texte : une zone de texte sous le pointeur est sélectionnée (et peut
+    /// être glissée) ; avec l'outil « Texte », un clic modifie la zone, ou en pose une nouvelle. Retourne vrai si l'appui
+    /// a servi aux zones de texte.
+    /// </summary>
+    private bool PressTextBox(int page, PdfPoint point, PointerRoutedEventArgs e)
+    {
+        if (!ViewModel.CanEdit)
+        {
+            return false;
+        }
+
+        if (ViewModel.TextBoxAt(page, point) is { } box)
+        {
+            ViewModel.ClearTextSelection();
+            ViewModel.SelectTextBox(box);
+            if (ViewModel.IsTextToolActive && box.CanEditText)
+            {
+                OpenTextBoxEditor(page, box, new PdfPoint(box.Area.X, box.Area.Y));
+            }
+            else if (box.CanMove && ElementOf(page) is { } element && PagesRepeater.CapturePointer(e.Pointer))
+            {
+                _drag = new TextBoxDrag(box, element, point);
+            }
+
+            return true;
+        }
+
+        ViewModel.SelectTextBox(null);
+        if (ViewModel.IsTextToolActive)
+        {
+            ViewModel.ClearTextSelection();
+            OpenTextBoxEditor(page, null, point);
+            return true;
+        }
+
+        return false;
+    }
+
+    private void DragTextBox(PointerRoutedEventArgs e)
+    {
+        if (_drag is not { } drag || AnnotationLayer(drag.Element) is not { } layer)
+        {
+            return;
+        }
+
+        var position = e.GetCurrentPoint(layer).Position;
+        var dx = position.X - drag.Start.X;
+        var dy = position.Y - drag.Start.Y;
+        if (!drag.Moved && Math.Abs(dx) < DragThreshold && Math.Abs(dy) < DragThreshold)
+        {
+            return;
+        }
+
+        drag.Moved = true;
+        drag.Target = new PdfPoint(drag.Box.Area.X + dx, drag.Box.Area.Y + dy);
+        DrawTextBoxes(drag.Element, drag.Box.Page);
+    }
+
+    /// <summary>Survol : contour léger de la zone, et curseur de déplacement si elle peut bouger.</summary>
+    private void HoverTextBox(PointerRoutedEventArgs e)
+    {
+        PdfTextBox? box = null;
+        if (ViewModel.CanEdit && PageUnder(e) is { } hit)
+        {
+            box = ViewModel.TextBoxAt(hit.Index, hit.Point);
+            if (ElementOf(hit.Index) is Border { Child: TextPageSurface surface })
+            {
+                surface.ShowCursor(box switch
+                {
+                    null => InputSystemCursorShape.IBeam,
+                    { CanMove: true } when !ViewModel.IsTextToolActive => InputSystemCursorShape.SizeAll,
+                    { CanEditText: true } when ViewModel.IsTextToolActive => InputSystemCursorShape.IBeam,
+                    _ => InputSystemCursorShape.Arrow,
+                });
+            }
+        }
+
+        if (box != _hover)
+        {
+            _hover = box;
+            DrawVisibleTextBoxes();
+        }
+    }
+
+    private async Task MoveTextBoxAsync(PdfTextBox box, PdfPoint target)
+    {
+        try
+        {
+            await ViewModel.MoveTextBoxAsync(box, target);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Déplacement de la zone de texte interrompu");
+        }
+        finally
+        {
+            DrawVisibleTextBoxes();
+        }
+    }
+
+    private void DrawVisibleTextBoxes()
+    {
+        foreach (var (element, index) in _realized)
+        {
+            DrawTextBoxes(element, index);
+        }
+    }
+
+    /// <summary>Contours de la page : zone sélectionnée (à sa place visée pendant un glisser) et zone survolée.</summary>
+    private void DrawTextBoxes(FrameworkElement element, int index)
+    {
+        if (AnnotationLayer(element) is not { } layer)
+        {
+            return;
+        }
+
+        for (var i = layer.Children.Count - 1; i >= 0; i--)
+        {
+            if (layer.Children[i] is not TextBox)
+            {
+                layer.Children.RemoveAt(i);
+            }
+        }
+
+        try
+        {
+            var selected = ViewModel.SelectedTextBox;
+            if (selected is not null && selected.Page == index && _editor?.Existing != selected)
+            {
+                var area = _drag is { Moved: true, Target: { } target } drag && drag.Box == selected
+                    ? new PdfRect(target.X, target.Y, selected.Area.Width, selected.Area.Height)
+                    : selected.Area;
+                AddOutline(layer, area, "TextBoxSelectionStyle");
+            }
+
+            if (_hover is { } hover && hover.Page == index && hover != selected && _editor?.Existing != hover)
+            {
+                AddOutline(layer, hover.Area, "TextBoxHoverStyle");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Contours des zones de texte de la page {Page} non dessinés", index + 1);
+        }
+
+        static void AddOutline(Canvas layer, PdfRect area, string style)
+        {
+            var outline = new Rectangle { Width = area.Width, Height = area.Height, Style = (Style)Application.Current.Resources[style] };
+            Canvas.SetLeft(outline, area.X);
+            Canvas.SetTop(outline, area.Y);
+            layer.Children.Insert(0, outline);
+        }
+    }
+
+    /// <summary>
+    /// Ouvre l'éditeur sur la page : sur une zone existante (son texte, sa taille, sa couleur, au moins sa taille
+    /// actuelle pour la cacher), ou pour une nouvelle zone au point cliqué. Entrée va à la ligne ; un clic ailleurs ou
+    /// Ctrl+Entrée enregistre ; Échap abandonne.
+    /// </summary>
+    private void OpenTextBoxEditor(int page, PdfTextBox? existing, PdfPoint topLeft)
+    {
+        if (!ViewModel.CanEdit)
+        {
+            return;
+        }
+
+        _ = CloseTextBoxEditorAsync();
+        if (ElementOf(page) is not { } element || AnnotationLayer(element) is not { } layer)
+        {
+            return;
+        }
+
+        var style = existing is null ? ViewModel.TextStyle : new PdfTextStyle(existing.FontSize, existing.Color);
+        var empty = PdfTextBoxes.Measure("M", style.FontSize);
+        var box = new TextBox
+        {
+            Style = (Style)Application.Current.Resources["TextBoxEditorStyle"],
+            RequestedTheme = ElementTheme.Light,
+            Text = existing?.Text.Replace("\n", "\r", StringComparison.Ordinal) ?? string.Empty,
+            FontSize = style.FontSize * PdfPageSize.PixelsPerPoint,
+            MinWidth = existing?.Area.Width ?? empty.Width * 4,
+            MinHeight = existing?.Area.Height ?? empty.Height,
+        };
+
+        // Couleur du texte gardée au survol et pendant la saisie (le modèle du champ la remplacerait sinon).
+        var brush = UiHelpers.Brush(style.Color);
+        box.Foreground = brush;
+        foreach (var key in new[] { "TextControlForeground", "TextControlForegroundPointerOver", "TextControlForegroundFocused" })
+        {
+            box.Resources[key] = brush;
+        }
+
+        AutomationProperties.SetName(box, Loc.Get("TextBox_Editor"));
+        Canvas.SetLeft(box, topLeft.X - 1);
+        Canvas.SetTop(box, topLeft.Y - 1);
+        box.LostFocus += (_, _) =>
+        {
+            if (_editor?.Box == box)
+            {
+                _ = CloseTextBoxEditorAsync();
+            }
+        };
+        box.PreviewKeyDown += (_, args) =>
+        {
+            var control = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control).HasFlag(CoreVirtualKeyStates.Down);
+            if (args.Key == VirtualKey.Escape || (args.Key == VirtualKey.Enter && control))
+            {
+                args.Handled = true;
+                _ = CloseTextBoxEditorAsync(cancel: args.Key == VirtualKey.Escape);
+                Scroller.Focus(FocusState.Programmatic);
+            }
+        };
+        box.Loaded += (_, _) =>
+        {
+            box.Focus(FocusState.Programmatic);
+            box.SelectionStart = box.Text.Length;
+        };
+
+        _editor = new TextBoxEditor(box, page, existing, topLeft, element, ViewModel.Content, style);
+        layer.Children.Add(box);
+        DrawTextBoxes(element, page);
+    }
+
+    /// <summary>
+    /// Ferme l'éditeur ; sauf abandon, son texte est enregistré dans le document (nouvelle zone, ou zone modifiée ; un
+    /// texte vidé supprime la zone). Le texte tapé n'est jamais perdu : si le document a changé entre-temps, la zone est
+    /// retrouvée, ou reposée à sa place.
+    /// </summary>
+    private async Task CloseTextBoxEditorAsync(bool cancel = false)
+    {
+        if (_editor is not { } editor)
+        {
+            return;
+        }
+
+        _editor = null;
+        var text = editor.Box.Text;
+        (editor.Box.Parent as Panel)?.Children.Remove(editor.Box);
+        DrawVisibleTextBoxes();
+        if (cancel)
+        {
+            return;
+        }
+
+        try
+        {
+            // Une opération en cours (enregistrement…) se termine d'abord : la zone passe juste après.
+            for (var i = 0; ViewModel.IsBusy && i < 200; i++)
+            {
+                await Task.Delay(50);
+            }
+
+            if (editor.Existing is { } existing)
+            {
+                var current = ReferenceEquals(ViewModel.Content, editor.Content)
+                    ? existing
+                    : ViewModel.TextBoxes(existing.Page).FirstOrDefault(b => b.Index == existing.Index && b.Text == existing.Text);
+                if (current is not null)
+                {
+                    await ViewModel.UpdateTextBoxAsync(current, text, editor.Style);
+                }
+                else if (!string.IsNullOrWhiteSpace(text))
+                {
+                    await ViewModel.AddTextBoxAsync(existing.Page, editor.TopLeft, text);
+                }
+            }
+            else if (!string.IsNullOrWhiteSpace(text))
+            {
+                await ViewModel.AddTextBoxAsync(editor.Page, editor.TopLeft, text);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Zone de texte non enregistrée");
+        }
+    }
+
+    private FrameworkElement? ElementOf(int page) =>
+        page >= 0 && page < ViewModel.Pages.Count ? PagesRepeater.TryGetElement(page) as FrameworkElement : null;
+
+    private async void OnTextSizeClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (double.TryParse((sender as FrameworkElement)?.Tag as string, NumberStyles.Float, CultureInfo.InvariantCulture, out var size))
+            {
+                await ViewModel.SetTextSizeAsync(size);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Taille du texte non appliquée");
+        }
+    }
+
+    private async void OnTextColorClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (int.TryParse((sender as FrameworkElement)?.Tag as string, NumberStyles.Integer, CultureInfo.InvariantCulture, out var index)
+                && index >= 0 && index < ViewModel.TextColors.Count)
+            {
+                await ViewModel.SetTextColorAsync(ViewModel.TextColors[index].Color);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Couleur du texte non appliquée");
         }
     }
 }

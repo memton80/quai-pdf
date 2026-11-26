@@ -5,7 +5,7 @@
 Chaque document s'ouvre dans son **onglet**, en haut de la fenêtre (comme dans le Bloc-notes ou l'Explorateur).
 
 - Bouton **Ouvrir** (`Ctrl+O`), le **+** à droite des onglets (`Ctrl+T`), ou glissez un ou plusieurs PDF dans la fenêtre depuis l'Explorateur.
-- Clic droit sur un PDF dans l'Explorateur, **Ouvrir avec**, **Quai PDF**.
+- Clic droit sur un PDF dans l'Explorateur, **Ouvrir avec**, **Quai PDF** : si Quai PDF est déjà ouvert, le PDF arrive dans un nouvel onglet de la fenêtre existante (une seule fenêtre de Quai PDF).
 - Un fichier déjà ouvert n'est pas ouvert deux fois : son onglet est affiché.
 - Un document protégé par un mot de passe le demande à l'ouverture. Le mot de passe n'est jamais enregistré.
 
@@ -84,6 +84,24 @@ Les commandes de pages les plus courantes (**Pivoter**, **Supprimer**) sont dans
 
 Rien n'est écrit sur le disque avant **Enregistrer**. Un point à côté du nom de l'onglet signale des modifications non enregistrées ; Quai PDF les propose à l'enregistrement, document par document, avant de fermer un onglet ou la fenêtre.
 
+## Zones de texte
+
+Pour écrire sur un PDF (remarque, réponse, correction), comme dans Firefox, Chrome, Edge ou Acrobat :
+
+| Action | Comment |
+|---|---|
+| Ajouter une zone de texte | bouton **Texte**, puis un clic sur la page ; tapez (`Entrée` va à la ligne), puis cliquez ailleurs ou `Ctrl+Entrée` |
+| Modifier le texte | double-clic sur la zone (ou un clic avec l'outil **Texte**, ou `Entrée` sur la zone sélectionnée) |
+| Déplacer | faites glisser la zone |
+| Supprimer | sélectionnez-la d'un clic, puis `Suppr` (ou videz son texte) |
+| Taille et couleur | bouton à droite de **Texte** : pour les prochaines zones et pour la zone sélectionnée |
+| Abandonner la saisie | `Échap` |
+| Quitter l'outil **Texte** | `Échap`, ou un clic sur **Texte** |
+
+Les zones de texte ajoutées dans Firefox, Chrome, Edge ou Acrobat se modifient, se déplacent et se suppriment de la même façon. Chaque changement s'annule avec `Ctrl+Z`, et rien n'est écrit sur le disque avant **Enregistrer**.
+
+Ce que Quai PDF respecte : une zone que son auteur a verrouillée ne bouge pas (ou son texte ne change pas, selon le verrou) ; une zone avec une flèche de rappel (Acrobat) s'affiche telle quelle mais ne se modifie pas ici. Le texte est toujours gardé tel que tapé, et s'affiche partout en Helvetica : les caractères que cette police ne connaît pas (alphabets non latins, symboles rares) y apparaissent comme « ? », bien que le texte exact soit enregistré.
+
 ## Mises à jour
 
 Quand une nouvelle version est publiée, un bandeau l'annonce en haut de la fenêtre. **Mettre à jour** :
@@ -110,4 +128,4 @@ Certains documents s'affichent sans pouvoir être modifiés (un bandeau l'indiqu
 
 ## Limites actuelles
 
-Quai PDF est un lecteur / éditeur **de base**. Pas encore de reconnaissance du texte des pages scannées, d'annotations, de formulaires, de signature, d'impression ni de modification du texte des pages.
+Quai PDF est un lecteur / éditeur **de base**. Pas encore de reconnaissance du texte des pages scannées, d'autres annotations que les zones de texte (surlignage, dessin…), de formulaires, de signature, d'impression ni de modification du texte des pages.

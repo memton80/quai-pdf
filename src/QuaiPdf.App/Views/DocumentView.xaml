@@ -127,6 +127,55 @@
                             <TextBlock Text="{l:Str Key=Toolbar_Delete}" />
                         </StackPanel>
                     </Button>
+
+                    <!-- Zones de texte : l'outil, puis la taille et la couleur. -->
+                    <Rectangle Style="{StaticResource ToolbarSeparatorStyle}" />
+                    <ToggleButton
+                        AutomationProperties.Name="{l:Str Key=Toolbar_TextTool}"
+                        IsChecked="{x:Bind ViewModel.IsTextToolActive, Mode=TwoWay}"
+                        IsEnabled="{x:Bind ViewModel.CanEdit, Mode=OneWay}"
+                        Style="{StaticResource ToolbarToggleButtonStyle}"
+                        ToolTipService.ToolTip="{l:Str Key=Toolbar_TextToolTooltip}">
+                        <StackPanel Style="{StaticResource ToolbarButtonContentStyle}">
+                            <FontIcon Glyph="&#xE8D2;" Style="{StaticResource ToolbarIconStyle}" />
+                            <TextBlock Text="{l:Str Key=Toolbar_TextTool}" />
+                        </StackPanel>
+                    </ToggleButton>
+                    <DropDownButton
+                        AutomationProperties.Name="{l:Str Key=Toolbar_TextStyle}"
+                        IsEnabled="{x:Bind ViewModel.CanEdit, Mode=OneWay}"
+                        Style="{StaticResource TextStyleButtonStyle}"
+                        ToolTipService.ToolTip="{l:Str Key=Toolbar_TextStyleTooltip}">
+                        <StackPanel Style="{StaticResource ToolbarButtonContentStyle}">
+                            <Ellipse Fill="{x:Bind ui:UiHelpers.ColorBrush(ViewModel.TextStyle), Mode=OneWay}" Style="{StaticResource TextStyleSwatchStyle}" />
+                            <TextBlock Text="{x:Bind ui:UiHelpers.FontSizeText(ViewModel.TextStyle), Mode=OneWay}" />
+                        </StackPanel>
+                        <DropDownButton.Flyout>
+                            <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                                <MenuFlyoutSubItem Text="{l:Str Key=TextStyle_Size}">
+                                    <MenuFlyoutItem Click="OnTextSizeClick" Tag="10" Text="10 pt" />
+                                    <MenuFlyoutItem Click="OnTextSizeClick" Tag="12" Text="12 pt" />
+                                    <MenuFlyoutItem Click="OnTextSizeClick" Tag="14" Text="14 pt" />
+                                    <MenuFlyoutItem Click="OnTextSizeClick" Tag="18" Text="18 pt" />
+                                    <MenuFlyoutItem Click="OnTextSizeClick" Tag="24" Text="24 pt" />
+                                    <MenuFlyoutItem Click="OnTextSizeClick" Tag="32" Text="32 pt" />
+                                </MenuFlyoutSubItem>
+                                <MenuFlyoutSubItem Text="{l:Str Key=TextStyle_Color}">
+                                    <MenuFlyoutItem Click="OnTextColorClick" Tag="0" Text="{l:Str Key=TextColor_Black}" />
+                                    <MenuFlyoutItem Click="OnTextColorClick" Tag="1" Text="{l:Str Key=TextColor_Red}" />
+                                    <MenuFlyoutItem Click="OnTextColorClick" Tag="2" Text="{l:Str Key=TextColor_Blue}" />
+                                    <MenuFlyoutItem Click="OnTextColorClick" Tag="3" Text="{l:Str Key=TextColor_Green}" />
+                                    <MenuFlyoutItem Click="OnTextColorClick" Tag="4" Text="{l:Str Key=TextColor_Orange}" />
+                                </MenuFlyoutSubItem>
+                                <MenuFlyoutSeparator />
+                                <MenuFlyoutItem Command="{x:Bind ViewModel.DeleteSelectedTextBoxCommand}" Text="{l:Str Key=TextBox_Delete}">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="&#xE74D;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                            </MenuFlyout>
+                        </DropDownButton.Flyout>
+                    </DropDownButton>
                     </StackPanel>
                     <Button
                         AutomationProperties.Name="{l:Str Key=Toolbar_More}"
@@ -484,10 +533,16 @@
                                     Height="{x:Bind DisplayHeight, Mode=OneWay}"
                                     AutomationProperties.Name="{x:Bind ui:UiHelpers.PageName(Number), Mode=OneWay}"
                                     Style="{StaticResource PageBorderStyle}">
-                                    <!-- Image de la page, puis surlignage du texte sélectionné (repère à 100 %, mis à l'échelle). -->
+                                    <!--
+                                        Image de la page, surlignage du texte sélectionné, puis zones de texte (contours,
+                                        éditeur) : deux calques au repère de la page à 100 %, mis à l'échelle.
+                                    -->
                                     <views:TextPageSurface>
                                         <Image Stretch="Fill" />
                                         <Viewbox Style="{StaticResource TextLayerStyle}">
+                                            <Canvas Width="{x:Bind BaseWidth, Mode=OneWay}" Height="{x:Bind BaseHeight, Mode=OneWay}" />
+                                        </Viewbox>
+                                        <Viewbox Style="{StaticResource AnnotationLayerStyle}">
                                             <Canvas Width="{x:Bind BaseWidth, Mode=OneWay}" Height="{x:Bind BaseHeight, Mode=OneWay}" />
                                         </Viewbox>
                                     </views:TextPageSurface>
@@ -548,6 +603,11 @@
                     x:Name="StatusText"
                     Style="{StaticResource StatusTextStyle}"
                     Text="{x:Bind ViewModel.StatusText, Mode=OneWay}" />
+                <Rectangle Style="{StaticResource StatusSeparatorStyle}" Visibility="{x:Bind ui:UiHelpers.VisibleIf(ViewModel.IsTextToolActive), Mode=OneWay}" />
+                <TextBlock
+                    Style="{StaticResource StatusTextStyle}"
+                    Text="{l:Str Key=Status_TextTool}"
+                    Visibility="{x:Bind ui:UiHelpers.VisibleIf(ViewModel.IsTextToolActive), Mode=OneWay}" />
             </StackPanel>
 
             <StackPanel Grid.Column="3" Style="{StaticResource StatusGroupStyle}">

@@ -131,6 +131,47 @@ internal sealed class WindowsRenderedPdf : IRenderedPdf
         }
     }
 
+    /// <summary>
+    /// Pixels d'une page dessinée par Windows (BGRA, largeur voulue) : le test de fumée vérifie ainsi ce que le moteur
+    /// de Windows dessine vraiment (zones de texte comprises).
+    /// </summary>
+    internal async Task<(byte[] Bgra, int Width, int Height)?> RenderPixelsAsync(int index, uint width)
+    {
+        if (_disposed || index < 0 || index >= Pages.Count)
+        {
+            return null;
+        }
+
+        await _gate.WaitAsync();
+        try
+        {
+            using var page = _document.GetPage((uint)index);
+            using var output = new InMemoryRandomAccessStream();
+            await page.RenderToStreamAsync(output, new PdfPageRenderOptions
+            {
+                DestinationWidth = width,
+                BackgroundColor = Microsoft.UI.Colors.White,
+            });
+            output.Seek(0);
+            var decoder = await Windows.Graphics.Imaging.BitmapDecoder.CreateAsync(output);
+            var pixels = await decoder.GetPixelDataAsync(
+                Windows.Graphics.Imaging.BitmapPixelFormat.Bgra8,
+                Windows.Graphics.Imaging.BitmapAlphaMode.Ignore,
+                new Windows.Graphics.Imaging.BitmapTransform(),
+                Windows.Graphics.Imaging.ExifOrientationMode.IgnoreExifOrientation,
+                Windows.Graphics.Imaging.ColorManagementMode.DoNotColorManage);
+            return (pixels.DetachPixelData(), (int)decoder.PixelWidth, (int)decoder.PixelHeight);
+        }
+        finally
+        {
+            _gate.Release();
+            if (_disposed && _gate.CurrentCount == Parallelism)
+            {
+                _stream.Dispose();
+            }
+        }
+    }
+
     public void Dispose()
     {
         if (_disposed)

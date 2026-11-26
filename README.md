@@ -20,6 +20,7 @@
 
 - **Plusieurs documents.** Chaque PDF s'ouvre dans son onglet, en haut de la fenêtre, comme dans le Bloc-notes de Windows 11.
 - **Lire.** Les pages défilent, avec le zoom (`Ctrl+molette`, `Ctrl+Plus`, `Ctrl+Moins`, curseur de la barre d'état) et l'ajustement à la largeur. À gauche, un volet au choix : les vignettes des pages, le plan du document (ses chapitres), les résultats de la recherche ou les propriétés.
+- **Écrire sur le PDF.** Bouton **Texte**, un clic sur la page, tapez : une zone de texte que Chrome, Edge, Firefox et Acrobat affichent à l'identique. Celles ajoutées avec Firefox, Chrome ou Edge se modifient, se déplacent et se suppriment aussi dans Quai PDF.
 - **Rechercher.** `Ctrl+F`, un mot, `Entrée` : toutes les occurrences, sans se soucier des majuscules ni des accents, et `F3` pour passer à la suivante.
 - **Copier du texte.** Sélectionnez à la souris comme sur une page web (double-clic pour un mot, `Ctrl+A` pour tout), puis `Ctrl+C`.
 

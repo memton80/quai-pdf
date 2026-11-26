@@ -124,6 +124,7 @@ internal static class SmokeTest
             await TextAsync(window, document, services.GetRequiredService<DialogService>(), hwnd, directory, report);
             await FollowVisiblePageAsync(window, document, hwnd, directory, report);
             await PanelsAsync(window, document, hwnd, directory, report);
+            await TextBoxesAsync(window, document, hwnd, directory, report);
 
             // Modifications : rotation, suppression annulée, déplacement.
             document.SetSelection([0]);
@@ -413,6 +414,88 @@ internal static class SmokeTest
         document.GoToPage(1);
         await WaitForAsync(() => view.ShownPageNumber == 1, "retour à la page 1");
         report.Add($"Volets : plan ({view.OutlineItemCount} entrées), recherche ({document.SearchResults.Count} résultats), propriétés ({document.Properties.Count} lignes)");
+    }
+
+    /// <summary>
+    /// Zones de texte, par le même chemin que la souris et le clavier : l'outil « Texte », l'éditeur posé sur la page,
+    /// le texte tapé, puis sa modification, son déplacement, sa suppression et l'annulation. Vérifie aussi que le moteur
+    /// de Windows dessine bien l'apparence écrite (pixels sombres là où est la zone).
+    /// </summary>
+    private static async Task TextBoxesAsync(MainWindow window, DocumentViewModel document, IntPtr hwnd, string directory, List<string> report)
+    {
+        var view = window.View;
+        var place = new PdfPoint(110, 880);
+        var before = await DarkPixelsAsync(document, 0, new PdfRect(place.X, place.Y, 300, 40));
+
+        document.IsTextToolActive = true;
+        Check(view.TypeInTextBoxEditor(0, null, place, "Zone de texte Quai PDF"), "ouverture de l'éditeur de zone de texte");
+        Check(view.IsEditingTextBox, "éditeur de zone de texte affiché");
+        await Task.Delay(600);
+        await CaptureAsync(hwnd, directory, "2g-zone-texte-saisie.png", report);
+        await WithTimeout(view.CommitTextBoxEditorAsync(), "enregistrement de la zone de texte");
+        var box = Assert1(document.TextBoxes(0), "zone de texte ajoutée");
+        Check(box.Text == "Zone de texte Quai PDF", $"texte de la zone : « {box.Text} »");
+        Check(Math.Abs(box.Area.X - place.X) < 1.5 && Math.Abs(box.Area.Y - place.Y) < 1.5, $"place de la zone : {box.Area}");
+        Check(document.SelectedTextBox == box, "zone ajoutée sélectionnée");
+
+        // Le moteur de Windows dessine l'apparence écrite par Quai PDF (celle que liront aussi Chrome, Firefox, Acrobat).
+        await WaitForAsync(() => window.View.TextBoxOutlineCount > 0, "contour de la zone sélectionnée");
+        var after = await DarkPixelsAsync(document, 0, box.Area);
+        Check(after > before + 30, $"Windows ne dessine pas la zone de texte ({before} pixels sombres avant, {after} après)");
+        await Task.Delay(800);
+        await CaptureAsync(hwnd, directory, "2h-zone-texte.png", report);
+
+        // Modification (comme un double-clic), déplacement, suppression, annulation.
+        Check(view.TypeInTextBoxEditor(0, box, new PdfPoint(box.Area.X, box.Area.Y), "Zone modifiée\rsur deux lignes"), "éditeur sur la zone existante");
+        await WithTimeout(view.CommitTextBoxEditorAsync(), "modification de la zone de texte");
+        box = Assert1(document.TextBoxes(0), "zone de texte modifiée");
+        Check(box.Text == "Zone modifiée\nsur deux lignes", $"texte modifié : « {box.Text} »");
+
+        await document.SetTextColorAsync(document.TextColors[1].Color);
+        box = Assert1(document.TextBoxes(0), "couleur de la zone");
+        Check(box.Color.ToHex() == document.TextColors[1].Color.ToHex(), $"couleur de la zone : {box.Color.ToHex()}");
+
+        Check(await document.MoveTextBoxAsync(box, new PdfPoint(140, 940)), "déplacement de la zone de texte");
+        box = Assert1(document.TextBoxes(0), "zone déplacée");
+        Check(Math.Abs(box.Area.Y - 940) < 1.5, $"zone déplacée : {box.Area}");
+
+        await document.DeleteSelectedTextBoxCommand.ExecuteAsync(null);
+        Check(document.TextBoxes(0).Count == 0, "suppression de la zone de texte");
+        await document.UndoCommand.ExecuteAsync(null);
+        Check(document.TextBoxes(0).Count == 1, "annulation de la suppression de la zone");
+
+        document.IsTextToolActive = false;
+        document.SelectTextBox(null);
+        report.Add($"Zones de texte : ajout, modification, couleur, déplacement, suppression, annulation ; dessinée par Windows ({before} → {after} pixels sombres) : OK");
+    }
+
+    private static PdfTextBox Assert1(IReadOnlyList<PdfTextBox> boxes, string what)
+    {
+        Check(boxes.Count == 1, $"{what} : {boxes.Count} zone(s) au lieu d'une");
+        return boxes[0];
+    }
+
+    /// <summary>Pixels sombres d'un rectangle de la page (pixels à 100 %), dessinée par le moteur de Windows.</summary>
+    private static async Task<int> DarkPixelsAsync(DocumentViewModel document, int page, PdfRect area)
+    {
+        var rendered = document.Rendered as WindowsRenderedPdf ?? throw new InvalidOperationException("Moteur d'affichage inattendu.");
+        var width = (uint)Math.Round(document.Pages[page].Size.Width);
+        var pixels = await rendered.RenderPixelsAsync(page, width) ?? throw new InvalidOperationException("Page non dessinée.");
+        var scale = pixels.Width / document.Pages[page].Size.Width;
+        var dark = 0;
+        for (var y = (int)(area.Y * scale); y < Math.Min(pixels.Height, (int)(area.Bottom * scale)); y++)
+        {
+            for (var x = (int)(area.X * scale); x < Math.Min(pixels.Width, (int)(area.Right * scale)); x++)
+            {
+                var i = ((y * pixels.Width) + x) * 4;
+                if (pixels.Bgra[i] + pixels.Bgra[i + 1] + pixels.Bgra[i + 2] < 3 * 160)
+                {
+                    dark++;
+                }
+            }
+        }
+
+        return dark;
     }
 
     /// <summary>
