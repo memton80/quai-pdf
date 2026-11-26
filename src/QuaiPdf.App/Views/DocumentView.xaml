@@ -13,6 +13,14 @@
         d'état. Fond en couche sur le Mica, comme l'onglet sélectionné : les deux se rejoignent (Bloc-notes, Terminal).
     -->
     <Grid Style="{StaticResource DocumentRootStyle}">
+        <!-- Boutons plats : désactivés sans fond ni bordure, volet ouvert marqué sans aplat d'accent. -->
+        <Grid.Resources>
+            <ResourceDictionary>
+                <ResourceDictionary.MergedDictionaries>
+                    <ResourceDictionary Source="ms-appx:///Styles/FlatCommands.xaml" />
+                </ResourceDictionary.MergedDictionaries>
+            </ResourceDictionary>
+        </Grid.Resources>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -42,6 +50,8 @@
                             <TextBlock Text="{l:Str Key=Toolbar_Open}" />
                         </StackPanel>
                     </Button>
+                    <!-- Commandes du document : absentes de l'accueil (onglet sans document). -->
+                    <StackPanel Style="{StaticResource ToolbarGroupStyle}" Visibility="{x:Bind ui:UiHelpers.VisibleIf(ViewModel.HasDocument), Mode=OneWay}">
                     <StackPanel Style="{StaticResource ToolbarSplitStyle}">
                         <Button
                             AutomationProperties.Name="{l:Str Key=Toolbar_Save}"
@@ -117,6 +127,7 @@
                             <TextBlock Text="{l:Str Key=Toolbar_Delete}" />
                         </StackPanel>
                     </Button>
+                    </StackPanel>
                     <Button
                         AutomationProperties.Name="{l:Str Key=Toolbar_More}"
                         Style="{StaticResource ToolbarFlatButtonStyle}"

@@ -164,6 +164,12 @@
         <Setter Property="CornerRadius" Value="0,4,4,0" />
     </Style>
 
+    <!-- Groupe de boutons de la barre (commandes du document), même espacement que la barre. -->
+    <Style x:Key="ToolbarGroupStyle" TargetType="StackPanel">
+        <Setter Property="Orientation" Value="Horizontal" />
+        <Setter Property="Spacing" Value="4" />
+    </Style>
+
     <!-- Contenu d'un bouton : icône puis texte. -->
     <Style x:Key="ToolbarButtonContentStyle" TargetType="StackPanel">
         <Setter Property="Orientation" Value="Horizontal" />

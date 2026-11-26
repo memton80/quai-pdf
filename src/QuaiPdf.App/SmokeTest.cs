@@ -1,6 +1,7 @@
 using System.Globalization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.UI.Windowing;
 using PdfSharp.Drawing;
 using PdfSharp.Fonts;
 using PdfSharp.Pdf;
@@ -11,6 +12,7 @@ using QuaiPdf.Core.Pdf.Text;
 using QuaiPdf.Core.Storage;
 using QuaiPdf.Core.Updates;
 using QuaiPdf.Core.ViewModels;
+using Windows.Graphics;
 
 namespace QuaiPdf.App;
 
@@ -72,6 +74,7 @@ internal static class SmokeTest
         try
         {
             Directory.CreateDirectory(directory);
+            FitToScreen(window);
             await Task.Delay(1500);
             await CaptureAsync(hwnd, directory, "1-accueil.png", report);
 
@@ -407,6 +410,16 @@ internal static class SmokeTest
         document.GoToPage(1);
         await WaitForAsync(() => view.ShownPageNumber == 1, "retour à la page 1");
         report.Add($"Volets : plan ({view.OutlineItemCount} entrées), recherche ({document.SearchResults.Count} résultats), propriétés ({document.Properties.Count} lignes)");
+    }
+
+    /// <summary>
+    /// Fenêtre entière à l'écran (celui du CI ne fait que 1024 × 768) : les captures montrent aussi la barre d'état.
+    /// </summary>
+    private static void FitToScreen(MainWindow window)
+    {
+        var area = DisplayArea.GetFromWindowId(window.AppWindow.Id, DisplayAreaFallback.Primary).WorkArea;
+        var size = window.AppWindow.Size;
+        window.AppWindow.MoveAndResize(new RectInt32(area.X, area.Y, Math.Min(size.Width, area.Width), Math.Min(size.Height, area.Height)));
     }
 
     public static void Fail(string directory, Exception? exception)
