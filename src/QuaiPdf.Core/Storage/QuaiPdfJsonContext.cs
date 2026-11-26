@@ -14,7 +14,7 @@ namespace QuaiPdf.Core.Storage;
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
     ReadCommentHandling = JsonCommentHandling.Skip,
     AllowTrailingCommas = true,
-    Converters = [typeof(CamelCaseEnumConverter<AppTheme>)])]
+    Converters = [typeof(CamelCaseEnumConverter<AppTheme>), typeof(CamelCaseEnumConverter<SidePanel>)])]
 [JsonSerializable(typeof(AppSettings))]
 internal sealed partial class QuaiPdfJsonContext : JsonSerializerContext;
 

@@ -5,6 +5,7 @@ using PdfSharp.Drawing;
 using PdfSharp.Fonts;
 using PdfSharp.Pdf;
 using QuaiPdf.App.Services;
+using QuaiPdf.Core.Models;
 using QuaiPdf.Core.Pdf;
 using QuaiPdf.Core.Pdf.Text;
 using QuaiPdf.Core.Storage;
@@ -15,8 +16,9 @@ namespace QuaiPdf.App;
 
 /// <summary>
 /// Test de fumée lancé par le CI : <c>QuaiPdf.exe --smoke-test &lt;dossier&gt;</c>.
-/// Ouvre la fenêtre, un document d'exemple, le modifie (rotation, suppression, annulation, ordre), l'enregistre,
-/// relit le résultat, ouvre les réglages et un document protégé, enregistre des captures, puis quitte avec le code 0
+/// Ouvre la fenêtre, un document d'exemple, ses volets (plan, recherche, propriétés), le modifie (rotation,
+/// suppression, annulation, ordre), l'enregistre, relit le résultat, ouvre les réglages et un document protégé dans un
+/// second onglet, ferme les onglets, enregistre des captures, puis quitte avec le code 0
 /// (fichier <c>smoke-ok.txt</c>) ou 1 (fichier <c>smoke-error.txt</c>). Données dans un dossier jetable.
 /// </summary>
 internal static class SmokeTest
@@ -73,13 +75,16 @@ internal static class SmokeTest
             await Task.Delay(1500);
             await CaptureAsync(hwnd, directory, "1-accueil.png", report);
 
-            var document = services.GetRequiredService<DocumentViewModel>();
+            var workspace = services.GetRequiredService<WorkspaceViewModel>();
             var settings = services.GetRequiredService<SettingsViewModel>();
 
-            // Ouverture : trois pages de tailles différentes, toutes modifiables.
+            // Ouverture : trois pages de tailles différentes, toutes modifiables, dans l'onglet d'accueil.
             var sample = Path.Combine(directory, "exemple.pdf");
             File.WriteAllBytes(sample, SampleDocument.Create());
-            Check(await WithTimeout(document.OpenFileAsync(sample), "ouverture"), "ouverture du document d'exemple");
+            Check(await WithTimeout(workspace.OpenFileAsync(sample), "ouverture"), "ouverture du document d'exemple");
+            var document = workspace.Selected;
+            Check(workspace.Documents.Count == 1, $"le premier document s'ouvre dans l'onglet d'accueil ({workspace.Documents.Count} onglets)");
+            Check(ReferenceEquals(window.SelectedTab, document), "onglet du document sélectionné dans la barre de titre");
             Check(document.PageCount == 3, $"3 pages attendues, {document.PageCount} affichées");
             Check(document.Editability == PdfEditability.Editable, $"document modifiable attendu ({document.Editability})");
 
@@ -114,6 +119,7 @@ internal static class SmokeTest
 
             await TextAsync(window, document, services.GetRequiredService<DialogService>(), hwnd, directory, report);
             await FollowVisiblePageAsync(window, document, hwnd, directory, report);
+            await PanelsAsync(window, document, hwnd, directory, report);
 
             // Modifications : rotation, suppression annulée, déplacement.
             document.SetSelection([0]);
@@ -163,19 +169,34 @@ internal static class SmokeTest
 
             await UpdateBannerAsync(window, services, hwnd, directory, report);
 
-            // Document protégé contre la modification : affiché en lecture seule.
+            // Document protégé contre la modification : dans un second onglet, affiché en lecture seule.
             var restricted = Path.Combine(directory, "protege.pdf");
             File.WriteAllBytes(restricted, SampleDocument.Create(ownerPassword: "proprietaire"));
-            Check(await WithTimeout(document.OpenFileAsync(restricted), "ouverture du document protégé"), "ouverture du document protégé");
-            Check(document.Editability == PdfEditability.Protected, $"document protégé en lecture seule ({document.Editability})");
-            Check(!document.RotateRightCommand.CanExecute(null), "rotation désactivée en lecture seule");
+            Check(await WithTimeout(workspace.OpenFileAsync(restricted), "ouverture du document protégé"), "ouverture du document protégé");
+            var locked = workspace.Selected;
+            Check(workspace.Documents.Count == 2 && !ReferenceEquals(locked, document), $"document protégé dans un nouvel onglet ({workspace.Documents.Count} onglets)");
+            await WaitForAsync(() => ReferenceEquals(window.SelectedTab, locked), "onglet du document protégé sélectionné");
+            Check(locked.Editability == PdfEditability.Protected, $"document protégé en lecture seule ({locked.Editability})");
+            Check(!locked.RotateRightCommand.CanExecute(null), "rotation désactivée en lecture seule");
             Check(window.View.ReadOnlyBannerShown, "bandeau « Lecture seule » affiché");
             Check(window.View.ShownPageNumber == 1, $"numéro de page affiché : {window.View.ShownPageNumber} au lieu de 1");
+            Check(document.HasDocument && document.PageCount == 3, "le premier onglet garde son document");
             await Task.Delay(1000);
             await CaptureAsync(hwnd, directory, "6-lecture-seule.png", report);
 
-            await document.CloseDocumentCommand.ExecuteAsync(null);
-            Check(!document.HasDocument, "fermeture du document");
+            // Un fichier déjà ouvert : son onglet est sélectionné, rien n'est rouvert.
+            Check(await WithTimeout(workspace.OpenFileAsync(saved), "retour au premier onglet"), "ouverture d'un fichier déjà ouvert");
+            Check(ReferenceEquals(workspace.Selected, document) && workspace.Documents.Count == 2, "fichier déjà ouvert : son onglet est sélectionné");
+            await WaitForAsync(() => ReferenceEquals(window.SelectedTab, document), "onglet du premier document sélectionné");
+            Check(window.View.ShownPageNumber >= 1, "vue du premier onglet affichée");
+
+            // Fermeture des onglets : le dernier revient à l'accueil.
+            Check(await WithTimeout(workspace.CloseAsync(locked), "fermeture de l'onglet protégé"), "fermeture de l'onglet protégé");
+            Check(workspace.Documents.Count == 1 && ReferenceEquals(workspace.Selected, document), "un onglet restant après fermeture");
+            await workspace.CloseSelectedCommand.ExecuteAsync(null);
+            Check(workspace.Documents.Count == 1 && !workspace.Selected.HasDocument, "le dernier onglet fermé revient à l'accueil");
+            Check(window.Title == "Quai PDF", $"titre de fenêtre à l'accueil : « {window.Title} »");
+            report.Add("Onglets : ouverture dans un nouvel onglet, fichier déjà ouvert retrouvé, fermeture : OK");
 
             report.Add("Test de fumée : OK");
             File.WriteAllLines(Path.Combine(directory, "smoke-report.txt"), report);
@@ -217,8 +238,8 @@ internal static class SmokeTest
             // Document ouvert pendant la mise à jour : la nouvelle version doit le rouvrir.
             var sample = Path.Combine(directory, "avant-mise-a-jour.pdf");
             File.WriteAllBytes(sample, SampleDocument.Create());
-            var document = services.GetRequiredService<DocumentViewModel>();
-            Check(await WithTimeout(document.OpenFileAsync(sample), "ouverture"), "ouverture du document avant la mise à jour");
+            var workspace = services.GetRequiredService<WorkspaceViewModel>();
+            Check(await WithTimeout(workspace.OpenFileAsync(sample), "ouverture"), "ouverture du document avant la mise à jour");
 
             var banner = services.GetRequiredService<UpdateBannerViewModel>();
             await banner.CheckAsync();
@@ -349,6 +370,45 @@ internal static class SmokeTest
         report.Add("Défilement : numéro de page et vignette sélectionnée suivent la page visible");
     }
 
+    /// <summary>
+    /// Volets du rail : plan (un chapitre par page, un clic montre sa page), recherche (« bonjour » sur chaque page,
+    /// sans tenir compte des majuscules ; l'occurrence montrée est surlignée), propriétés (titre du document).
+    /// </summary>
+    private static async Task PanelsAsync(MainWindow window, DocumentViewModel document, IntPtr hwnd, string directory, List<string> report)
+    {
+        var view = window.View;
+
+        view.OpenPanel(SidePanel.Outline);
+        await WaitForAsync(() => view.OutlineItemCount == 3, $"plan affiché ({view.OutlineItemCount} entrées)");
+        Check(document.Outline.Select(i => i.PageIndex).SequenceEqual([0, 1, 2]), "pages du plan");
+        document.GoToOutlineItem(document.Outline[2]);
+        await WaitForAsync(() => view.ShownPageNumber == 3, "page du chapitre 3 montrée");
+        await Task.Delay(500);
+        await CaptureAsync(hwnd, directory, "2d-plan.png", report);
+
+        view.OpenPanel(SidePanel.Search);
+        document.SearchQuery = "bonjour";
+        await WithTimeout(document.SearchCommand.ExecuteAsync(null), "recherche");
+        Check(document.SearchResults.Select(r => r.Page).SequenceEqual([0, 1, 2]), $"recherche : {document.SearchResults.Count} résultats");
+        document.NextSearchResultCommand.Execute(null);
+        Check(document.CurrentSearchResult?.Page == 1 && document.SelectedText == "Bonjour", $"résultat suivant : « {document.SelectedText} »");
+        await WaitForAsync(() => view.ShownPageNumber == 2, "page du résultat montrée");
+        await WaitForAsync(() => view.HighlightCount > 0, "occurrence surlignée");
+        await Task.Delay(500);
+        await CaptureAsync(hwnd, directory, "2e-recherche.png", report);
+
+        view.OpenPanel(SidePanel.Properties);
+        await WaitForAsync(() => document.Properties.Any(p => p.Value == "Exemple Quai PDF"), "titre du document dans les propriétés");
+        await Task.Delay(500);
+        await CaptureAsync(hwnd, directory, "2f-proprietes.png", report);
+
+        document.ClearTextSelection();
+        view.OpenPanel(SidePanel.Pages);
+        document.GoToPage(1);
+        await WaitForAsync(() => view.ShownPageNumber == 1, "retour à la page 1");
+        report.Add($"Volets : plan ({view.OutlineItemCount} entrées), recherche ({document.SearchResults.Count} résultats), propriétés ({document.Properties.Count} lignes)");
+    }
+
     public static void Fail(string directory, Exception? exception)
     {
         TryWrite(Path.Combine(directory, "smoke-error.txt"), exception?.ToString() ?? "Erreur inconnue");
@@ -416,8 +476,9 @@ internal static class SmokeTest
     }
 
     /// <summary>
-    /// Document d'exemple : A4 portrait, A4 paysage, Letter ; une flèche montre le haut de chaque page, et une ligne
-    /// de texte (police Arial de Windows, intégrée au fichier par PDFsharp) sert à la sélection.
+    /// Document d'exemple : A4 portrait, A4 paysage, Letter ; une flèche montre le haut de chaque page, une ligne
+    /// de texte (police Arial de Windows, intégrée au fichier par PDFsharp) sert à la sélection et à la recherche, et le
+    /// plan a un chapitre par page.
     /// </summary>
     private static class SampleDocument
     {
@@ -450,6 +511,7 @@ internal static class SmokeTest
             gfx.DrawPolygon(brush, [new XPoint(width / 2, 90), new XPoint((width / 2) - 60, 190), new XPoint((width / 2) + 60, 190)], XFillMode.Winding);
             gfx.DrawRectangle(brush, (width / 2) - 20, 190, 40, 120);
             gfx.DrawString($"Page {number} : Bonjour Quai PDF", new XFont("Arial", 22), XBrushes.Black, new XPoint(72, 352));
+            document.Outlines.Add($"Chapitre {number}", page);
             for (var i = 0; i < 5; i++)
             {
                 gfx.DrawRectangle(XBrushes.LightGray, 72, 380 + (i * 30), width - 144 - (i % 3 * 60), 12);

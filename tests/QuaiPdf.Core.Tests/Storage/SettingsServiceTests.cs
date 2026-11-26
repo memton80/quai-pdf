@@ -82,9 +82,33 @@ public sealed class SettingsServiceTests
 
         viewModel.ThemeIndex = 2;
         viewModel.ShowThumbnails = false;
+        viewModel.SidePanel = SidePanel.Search;
 
         Assert.Equal(AppTheme.Dark, service.Current.Theme);
         Assert.False(service.Current.ShowThumbnails);
+        Assert.Equal(SidePanel.Search, service.Current.SidePanel);
+    }
+
+    [Fact]
+    public void Side_panel_is_written_in_camel_case_and_read_back()
+    {
+        using var temp = new TempDirectory();
+        var path = temp.File("settings.json");
+
+        new JsonSettingsService(path).Update(s => s.SidePanel = SidePanel.Outline);
+
+        Assert.Contains("\"sidePanel\": \"outline\"", File.ReadAllText(path));
+        Assert.Equal(SidePanel.Outline, new JsonSettingsService(path).Current.SidePanel);
+    }
+
+    [Fact]
+    public void Unknown_side_panel_falls_back_to_pages()
+    {
+        using var temp = new TempDirectory();
+        var path = temp.File("settings.json");
+        File.WriteAllText(path, "{ \"sidePanel\": 42 }");
+
+        Assert.Equal(SidePanel.Pages, new JsonSettingsService(path).Current.SidePanel);
     }
 
     [Fact]

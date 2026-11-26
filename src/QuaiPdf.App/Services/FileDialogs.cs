@@ -10,15 +10,11 @@ internal sealed class FileDialogs : IFileDialogs
     /// <summary>Identifiant de la fenêtre principale ; renseigné par celle-ci à sa création.</summary>
     public Microsoft.UI.WindowId WindowId { get; set; }
 
-    public async Task<string?> PickPdfToOpenAsync()
-    {
-        var picker = new FileOpenPicker(WindowId) { SuggestedStartLocation = PickerLocationId.DocumentsLibrary };
-        picker.FileTypeFilter.Add(".pdf");
-        var result = await picker.PickSingleFileAsync();
-        return result?.Path;
-    }
+    public Task<IReadOnlyList<string>> PickPdfsToOpenAsync() => PickPdfsAsync();
 
-    public async Task<IReadOnlyList<string>> PickPdfsToInsertAsync()
+    public Task<IReadOnlyList<string>> PickPdfsToInsertAsync() => PickPdfsAsync();
+
+    private async Task<IReadOnlyList<string>> PickPdfsAsync()
     {
         var picker = new FileOpenPicker(WindowId) { SuggestedStartLocation = PickerLocationId.DocumentsLibrary };
         picker.FileTypeFilter.Add(".pdf");

@@ -51,8 +51,18 @@ internal static class AppServices
         // PDF : affichage par Windows, modifications par PDFsharp (dans QuaiPdf.Core)
         services.AddSingleton<IPdfRenderer, WindowsPdfRenderer>();
 
-        // View-models
-        services.AddSingleton<DocumentViewModel>();
+        // View-models : un document par onglet, créé par l'espace de travail (et libéré par lui à la fermeture de
+        // l'onglet, d'où la fabrique plutôt qu'un enregistrement « transient » que le conteneur garderait).
+        services.AddSingleton(provider => new WorkspaceViewModel(
+            () => new DocumentViewModel(
+                provider.GetRequiredService<IPdfRenderer>(),
+                provider.GetRequiredService<IDialogService>(),
+                provider.GetRequiredService<IFileDialogs>(),
+                provider.GetRequiredService<IStrings>(),
+                provider.GetRequiredService<IClipboard>(),
+                provider.GetRequiredService<ILogger<DocumentViewModel>>()),
+            provider.GetRequiredService<IFileDialogs>(),
+            provider.GetRequiredService<ILogger<WorkspaceViewModel>>()));
         services.AddSingleton<SettingsViewModel>();
 
         // Mises à jour (comme Quai) : une requête à l'API publique de GitHub, puis, sur demande, le téléchargement de

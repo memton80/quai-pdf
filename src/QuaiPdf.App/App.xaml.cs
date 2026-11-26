@@ -79,9 +79,15 @@ public partial class App : Application
             return;
         }
 
-        if (((afterUpdate ? DocumentToReopen() : null) ?? FileToOpen()) is { } path)
+        List<string> paths = afterUpdate ? DocumentsToReopen() : [];
+        if (paths.Count == 0)
         {
-            _ = OpenAtStartupAsync(path);
+            paths = FilesToOpen();
+        }
+
+        if (paths.Count > 0)
+        {
+            _ = OpenAtStartupAsync(paths);
         }
 
         _ = CheckForUpdatesAsync();
@@ -101,45 +107,45 @@ public partial class App : Application
         }
     }
 
-    /// <summary>Document ouvert au moment de la mise à jour (noté par UpdateInstaller), rouvert une seule fois.</summary>
-    private string? DocumentToReopen()
+    /// <summary>Documents ouverts au moment de la mise à jour (notés par UpdateInstaller), rouverts une seule fois.</summary>
+    private List<string> DocumentsToReopen()
     {
         var file = Services.GetRequiredService<AppPaths>().ReopenAfterUpdateFile;
         try
         {
             if (!File.Exists(file))
             {
-                return null;
+                return [];
             }
 
-            var path = File.ReadAllText(file).Trim();
+            var paths = File.ReadAllLines(file).Select(line => line.Trim()).Where(File.Exists).ToList();
             File.Delete(file);
-            if (!File.Exists(path))
+            foreach (var path in paths)
             {
-                return null;
+                _logger.LogInformation("Document rouvert après la mise à jour ({File})", Path.GetFileName(path));
             }
 
-            _logger.LogInformation("Document rouvert après la mise à jour ({File})", Path.GetFileName(path));
-            return path;
+            return paths;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            _logger.LogWarning("Document à rouvrir après la mise à jour illisible ({Error})", ex.GetType().Name);
-            return null;
+            _logger.LogWarning("Documents à rouvrir après la mise à jour illisibles ({Error})", ex.GetType().Name);
+            return [];
         }
     }
 
-    /// <summary>Fichier passé en argument (« Ouvrir avec », double-clic, glisser sur l'icône).</summary>
-    private static string? FileToOpen() =>
+    /// <summary>Fichiers passés en argument (« Ouvrir avec », double-clic, glisser sur l'icône), chacun dans son onglet.</summary>
+    private static List<string> FilesToOpen() =>
         Environment.GetCommandLineArgs()
             .Skip(1)
-            .FirstOrDefault(arg => !arg.StartsWith("--", StringComparison.Ordinal) && File.Exists(arg));
+            .Where(arg => !arg.StartsWith("--", StringComparison.Ordinal) && File.Exists(arg))
+            .ToList();
 
-    private async Task OpenAtStartupAsync(string path)
+    private async Task OpenAtStartupAsync(IReadOnlyList<string> paths)
     {
         try
         {
-            await Services.GetRequiredService<DocumentViewModel>().OpenFileAsync(path);
+            await Services.GetRequiredService<WorkspaceViewModel>().OpenFilesAsync(paths);
         }
         catch (Exception ex)
         {

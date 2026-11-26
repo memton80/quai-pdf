@@ -22,7 +22,7 @@
     <value>Ouvrir</value>
   </data>
   <data name="Toolbar_OpenTooltip" xml:space="preserve">
-    <value>Ouvrir un PDF (Ctrl+O)</value>
+    <value>Ouvrir des PDF, chacun dans un onglet (Ctrl+O)</value>
   </data>
   <data name="Toolbar_Save" xml:space="preserve">
     <value>Enregistrer</value>
@@ -60,14 +60,8 @@
   <data name="Toolbar_RotateRightTooltip" xml:space="preserve">
     <value>Pivoter à droite (Ctrl+R)</value>
   </data>
-  <data name="Toolbar_MoveUp" xml:space="preserve">
-    <value>Monter</value>
-  </data>
   <data name="Toolbar_MoveUpTooltip" xml:space="preserve">
     <value>Déplacer vers le début</value>
-  </data>
-  <data name="Toolbar_MoveDown" xml:space="preserve">
-    <value>Descendre</value>
   </data>
   <data name="Toolbar_MoveDownTooltip" xml:space="preserve">
     <value>Déplacer vers la fin</value>
@@ -78,18 +72,6 @@
   <data name="Toolbar_DeleteTooltip" xml:space="preserve">
     <value>Supprimer les pages sélectionnées (Suppr dans les vignettes)</value>
   </data>
-  <data name="Toolbar_Insert" xml:space="preserve">
-    <value>Insérer des pages</value>
-  </data>
-  <data name="Toolbar_InsertTooltip" xml:space="preserve">
-    <value>Insérer les pages d'autres PDF après la page en cours (Ctrl+I)</value>
-  </data>
-  <data name="Toolbar_Extract" xml:space="preserve">
-    <value>Extraire</value>
-  </data>
-  <data name="Toolbar_ExtractTooltip" xml:space="preserve">
-    <value>Enregistrer les pages sélectionnées dans un nouveau PDF (Ctrl+E)</value>
-  </data>
   <data name="Toolbar_PreviousPage" xml:space="preserve">
     <value>Page précédente</value>
   </data>
@@ -98,9 +80,6 @@
   </data>
   <data name="Toolbar_PageNumber" xml:space="preserve">
     <value>Numéro de page</value>
-  </data>
-  <data name="Toolbar_PageCount" xml:space="preserve">
-    <value>/ {0}</value>
   </data>
   <data name="Toolbar_Zoom" xml:space="preserve">
     <value>Zoom</value>
@@ -117,17 +96,8 @@
   <data name="Toolbar_ZoomOutTooltip" xml:space="preserve">
     <value>Zoom arrière (Ctrl+Moins ou Ctrl+molette)</value>
   </data>
-  <data name="Toolbar_Thumbnails" xml:space="preserve">
-    <value>Vignettes</value>
-  </data>
-  <data name="Toolbar_ThumbnailsTooltip" xml:space="preserve">
-    <value>Afficher ou masquer les vignettes des pages</value>
-  </data>
   <data name="Toolbar_Properties" xml:space="preserve">
     <value>Propriétés du document… (Ctrl+D)</value>
-  </data>
-  <data name="Toolbar_Close" xml:space="preserve">
-    <value>Fermer le document (Ctrl+W)</value>
   </data>
   <data name="Toolbar_Settings" xml:space="preserve">
     <value>Réglages</value>
@@ -160,7 +130,7 @@
     <value>Aucun document ouvert</value>
   </data>
   <data name="Empty_Hint" xml:space="preserve">
-    <value>Ouvrez un PDF, ou faites-le glisser ici depuis l'Explorateur.</value>
+    <value>Ouvrez un ou plusieurs PDF, ou faites-les glisser ici depuis l'Explorateur : chacun s'ouvre dans son onglet.</value>
   </data>
   <data name="Empty_Open" xml:space="preserve">
     <value>Ouvrir un PDF</value>
@@ -244,7 +214,7 @@
     <value>Sombre</value>
   </data>
   <data name="Settings_Thumbnails" xml:space="preserve">
-    <value>Afficher les vignettes des pages</value>
+    <value>Afficher le volet latéral (pages, plan, recherche, propriétés)</value>
   </data>
   <data name="Settings_Version" xml:space="preserve">
     <value>Quai PDF {0}</value>
@@ -422,5 +392,74 @@
   </data>
   <data name="Size_Megabytes" xml:space="preserve">
     <value>{0} Mo</value>
+  </data>
+  <data name="Tabs_Name" xml:space="preserve">
+    <value>Documents ouverts</value>
+  </data>
+  <data name="Toolbar_Rotate" xml:space="preserve">
+    <value>Pivoter</value>
+  </data>
+  <data name="Toolbar_MoreShort" xml:space="preserve">
+    <value>Plus</value>
+  </data>
+  <data name="Toolbar_InsertMenu" xml:space="preserve">
+    <value>Insérer les pages d'autres PDF… (Ctrl+I)</value>
+  </data>
+  <data name="Toolbar_ExtractMenu" xml:space="preserve">
+    <value>Extraire les pages sélectionnées… (Ctrl+E)</value>
+  </data>
+  <data name="Toolbar_CloseTab" xml:space="preserve">
+    <value>Fermer l'onglet (Ctrl+W)</value>
+  </data>
+  <data name="Search_Name" xml:space="preserve">
+    <value>Rechercher dans le document</value>
+  </data>
+  <data name="Search_Placeholder" xml:space="preserve">
+    <value>Rechercher dans le document (Ctrl+F)</value>
+  </data>
+  <data name="Search_Hint" xml:space="preserve">
+    <value>Tapez un mot dans le champ Rechercher, en haut à droite, puis Entrée.</value>
+  </data>
+  <data name="Search_Previous" xml:space="preserve">
+    <value>Résultat précédent</value>
+  </data>
+  <data name="Search_PreviousTooltip" xml:space="preserve">
+    <value>Résultat précédent (Maj+F3)</value>
+  </data>
+  <data name="Search_Next" xml:space="preserve">
+    <value>Résultat suivant</value>
+  </data>
+  <data name="Search_NextTooltip" xml:space="preserve">
+    <value>Résultat suivant (F3, ou Entrée dans le champ)</value>
+  </data>
+  <data name="Search_Results" xml:space="preserve">
+    <value>Résultats de la recherche</value>
+  </data>
+  <data name="Rail_Name" xml:space="preserve">
+    <value>Volets</value>
+  </data>
+  <data name="Panel_Pages" xml:space="preserve">
+    <value>Pages</value>
+  </data>
+  <data name="Panel_Outline" xml:space="preserve">
+    <value>Plan</value>
+  </data>
+  <data name="Panel_Search" xml:space="preserve">
+    <value>Recherche</value>
+  </data>
+  <data name="Panel_Properties" xml:space="preserve">
+    <value>Propriétés</value>
+  </data>
+  <data name="Outline_None" xml:space="preserve">
+    <value>Ce document n'a pas de plan (signets).</value>
+  </data>
+  <data name="Properties_Edit" xml:space="preserve">
+    <value>Modifier les propriétés…</value>
+  </data>
+  <data name="Status_Page" xml:space="preserve">
+    <value>Page</value>
+  </data>
+  <data name="Status_PageCount" xml:space="preserve">
+    <value>sur {0}</value>
   </data>
 </root>

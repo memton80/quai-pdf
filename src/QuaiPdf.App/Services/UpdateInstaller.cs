@@ -11,21 +11,22 @@ namespace QuaiPdf.App.Services;
 /// Installation d'une mise à jour téléchargée (repris de Quai) : l'installateur Inno Setup de la release est lancé en
 /// mode silencieux (petite fenêtre de progression, aucune question), Quai PDF se ferme, et l'installateur le relance
 /// une fois à jour (<c>/RELAUNCH=1</c>, voir <c>installer/QuaiPdf.iss</c>). Installation par utilisateur : aucune
-/// élévation. Un document modifié est d'abord proposé à l'enregistrement ; le document ouvert est rouvert ensuite.
+/// élévation. Les documents modifiés sont d'abord proposés à l'enregistrement ; les documents ouverts sont rouverts
+/// ensuite, chacun dans son onglet.
 /// </summary>
 internal sealed class UpdateInstaller : IUpdateInstaller
 {
     // Entrée de désinstallation écrite par Inno Setup (AppId de installer/QuaiPdf.iss, à ne jamais changer).
     private const string UninstallKey = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\{881A2EB2-5817-4B9E-AA96-BEBBED0A8E2E}_is1";
 
-    private readonly DocumentViewModel _document;
+    private readonly WorkspaceViewModel _workspace;
     private readonly AppPaths _paths;
     private readonly ILogger _logger;
     private bool? _canInstall;
 
-    public UpdateInstaller(DocumentViewModel document, AppPaths paths, ILogger<UpdateInstaller> logger)
+    public UpdateInstaller(WorkspaceViewModel workspace, AppPaths paths, ILogger<UpdateInstaller> logger)
     {
-        _document = document;
+        _workspace = workspace;
         _paths = paths;
         _logger = logger;
     }
@@ -36,12 +37,12 @@ internal sealed class UpdateInstaller : IUpdateInstaller
     public async Task<bool> InstallAndRestartAsync(string installerPath)
     {
         // Modifications en cours : enregistrer, abandonner, ou annuler (la mise à jour attend, déjà téléchargée).
-        if (!await _document.ConfirmCloseAsync())
+        if (!await _workspace.ConfirmCloseAllAsync())
         {
             return false;
         }
 
-        RememberDocument();
+        RememberDocuments();
 
         var start = new ProcessStartInfo(installerPath)
         {
@@ -83,12 +84,13 @@ internal sealed class UpdateInstaller : IUpdateInstaller
     }
 
     /// <summary>
-    /// Document à rouvrir après la mise à jour (sur le disque, tel qu'enregistré ou abandonné juste avant).
-    /// Lu et effacé par la nouvelle version (<c>--after-update</c>).
+    /// Documents à rouvrir après la mise à jour (sur le disque, tels qu'enregistrés ou abandonnés juste avant), un
+    /// chemin par ligne, dans l'ordre des onglets. Lus et effacés par la nouvelle version (<c>--after-update</c>).
     /// </summary>
-    private void RememberDocument()
+    private void RememberDocuments()
     {
-        if (_document.FilePath is not { } path)
+        var paths = _workspace.OpenPaths;
+        if (paths.Count == 0)
         {
             return;
         }
@@ -96,7 +98,7 @@ internal sealed class UpdateInstaller : IUpdateInstaller
         try
         {
             Directory.CreateDirectory(_paths.UpdatesDirectory);
-            File.WriteAllText(_paths.ReopenAfterUpdateFile, path);
+            File.WriteAllLines(_paths.ReopenAfterUpdateFile, paths);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

@@ -6,169 +6,567 @@
     xmlns:l="using:QuaiPdf.App.Localization"
     xmlns:ui="using:QuaiPdf.App"
     xmlns:views="using:QuaiPdf.App.Views"
-    xmlns:vm="using:QuaiPdf.Core.ViewModels"
-    AllowDrop="True"
-    DragOver="OnDragOver"
-    Drop="OnDrop">
+    xmlns:vm="using:QuaiPdf.Core.ViewModels">
 
-    <Grid>
+    <!--
+        Un onglet : barre de commandes, rail des volets (pages, plan, recherche, propriétés), volet, pages, barre
+        d'état. Fond en couche sur le Mica, comme l'onglet sélectionné : les deux se rejoignent (Bloc-notes, Terminal).
+    -->
+    <Grid Style="{StaticResource DocumentRootStyle}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <!--
-            Barre d'outils : boutons arrondis de Windows 11. « Enregistrer » est le bouton principal, en couleur
-            d'accent avec son menu, comme « Redémarrer maintenant » dans les réglages de Windows. Une tabulation pour
-            y entrer, puis les flèches. Les raccourcis clavier sont posés dans le code (DocumentView.xaml.cs).
+            Barre de commandes : fichier, historique, pages, menu « Plus », et la recherche à droite. Une tabulation
+            pour y entrer, puis les flèches. Les raccourcis clavier sont posés par la fenêtre (MainWindow.xaml.cs).
         -->
-        <ScrollViewer Style="{StaticResource ToolbarScrollerStyle}">
-            <StackPanel x:Name="Toolbar" Style="{StaticResource ToolbarStyle}">
-                <!-- Fichier -->
-                <Button
-                    Command="{x:Bind ViewModel.OpenCommand}"
-                    Style="{StaticResource ToolbarButtonStyle}"
-                    ToolTipService.ToolTip="{l:Str Key=Toolbar_OpenTooltip}">
-                    <StackPanel Style="{StaticResource ToolbarButtonContentStyle}">
-                        <FontIcon Glyph="&#xE8E5;" Style="{StaticResource ToolbarIconStyle}" />
-                        <TextBlock Text="{l:Str Key=Toolbar_Open}" />
-                    </StackPanel>
-                </Button>
-                <StackPanel Style="{StaticResource ToolbarSplitStyle}">
+        <Grid Style="{StaticResource CommandAreaStyle}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <ScrollViewer Style="{StaticResource ToolbarScrollerStyle}">
+                <StackPanel x:Name="Toolbar" Style="{StaticResource ToolbarStyle}">
+                    <!-- Fichier -->
                     <Button
-                        AutomationProperties.Name="{l:Str Key=Toolbar_Save}"
-                        Command="{x:Bind ViewModel.SaveOrCopyCommand}"
-                        Style="{StaticResource ToolbarAccentMainButtonStyle}"
-                        ToolTipService.ToolTip="{l:Str Key=Toolbar_SaveTooltip}">
+                        Command="{x:Bind Workspace.OpenCommand}"
+                        Style="{StaticResource ToolbarFlatButtonStyle}"
+                        ToolTipService.ToolTip="{l:Str Key=Toolbar_OpenTooltip}">
                         <StackPanel Style="{StaticResource ToolbarButtonContentStyle}">
-                            <FontIcon Glyph="&#xE74E;" Style="{StaticResource ToolbarIconStyle}" />
-                            <TextBlock Text="{l:Str Key=Toolbar_Save}" />
+                            <FontIcon Glyph="&#xE8E5;" Style="{StaticResource ToolbarIconStyle}" />
+                            <TextBlock Text="{l:Str Key=Toolbar_Open}" />
+                        </StackPanel>
+                    </Button>
+                    <StackPanel Style="{StaticResource ToolbarSplitStyle}">
+                        <Button
+                            AutomationProperties.Name="{l:Str Key=Toolbar_Save}"
+                            Command="{x:Bind ViewModel.SaveOrCopyCommand}"
+                            Style="{StaticResource ToolbarAccentMainButtonStyle}"
+                            ToolTipService.ToolTip="{l:Str Key=Toolbar_SaveTooltip}">
+                            <StackPanel Style="{StaticResource ToolbarButtonContentStyle}">
+                                <FontIcon Glyph="&#xE74E;" Style="{StaticResource ToolbarIconStyle}" />
+                                <TextBlock Text="{l:Str Key=Toolbar_Save}" />
+                            </StackPanel>
+                        </Button>
+                        <Button
+                            AutomationProperties.Name="{l:Str Key=Toolbar_SaveMore}"
+                            IsEnabled="{x:Bind ViewModel.HasDocument, Mode=OneWay}"
+                            Style="{StaticResource ToolbarAccentMenuButtonStyle}"
+                            ToolTipService.ToolTip="{l:Str Key=Toolbar_SaveMore}">
+                            <FontIcon Glyph="&#xE70D;" Style="{StaticResource ToolbarChevronStyle}" />
+                            <Button.Flyout>
+                                <MenuFlyout Placement="BottomEdgeAlignedRight">
+                                    <MenuFlyoutItem Command="{x:Bind ViewModel.SaveAsCommand}" Text="{l:Str Key=Toolbar_SaveAs}">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon Glyph="&#xE792;" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                </MenuFlyout>
+                            </Button.Flyout>
+                        </Button>
+                    </StackPanel>
+
+                    <!-- Historique -->
+                    <Rectangle Style="{StaticResource ToolbarSeparatorStyle}" />
+                    <Button
+                        AutomationProperties.Name="{l:Str Key=Toolbar_Undo}"
+                        Command="{x:Bind ViewModel.UndoCommand}"
+                        Style="{StaticResource ToolbarIconButtonStyle}"
+                        ToolTipService.ToolTip="{l:Str Key=Toolbar_UndoTooltip}">
+                        <FontIcon Glyph="&#xE7A7;" Style="{StaticResource ToolbarIconStyle}" />
+                    </Button>
+                    <Button
+                        AutomationProperties.Name="{l:Str Key=Toolbar_Redo}"
+                        Command="{x:Bind ViewModel.RedoCommand}"
+                        Style="{StaticResource ToolbarIconButtonStyle}"
+                        ToolTipService.ToolTip="{l:Str Key=Toolbar_RedoTooltip}">
+                        <FontIcon Glyph="&#xE7A6;" Style="{StaticResource ToolbarIconStyle}" />
+                    </Button>
+
+                    <!-- Pages : les plus courantes en vue, les autres dans « Plus ». -->
+                    <Rectangle Style="{StaticResource ToolbarSeparatorStyle}" />
+                    <Button
+                        AutomationProperties.Name="{l:Str Key=Toolbar_RotateLeft}"
+                        Command="{x:Bind ViewModel.RotateLeftCommand}"
+                        Style="{StaticResource ToolbarIconButtonStyle}"
+                        ToolTipService.ToolTip="{l:Str Key=Toolbar_RotateLeftTooltip}">
+                        <FontIcon Glyph="&#xE7AD;" Style="{StaticResource MirroredIconStyle}" />
+                    </Button>
+                    <Button
+                        AutomationProperties.Name="{l:Str Key=Toolbar_RotateRight}"
+                        Command="{x:Bind ViewModel.RotateRightCommand}"
+                        Style="{StaticResource ToolbarFlatButtonStyle}"
+                        ToolTipService.ToolTip="{l:Str Key=Toolbar_RotateRightTooltip}">
+                        <StackPanel Style="{StaticResource ToolbarButtonContentStyle}">
+                            <FontIcon Glyph="&#xE7AD;" Style="{StaticResource ToolbarIconStyle}" />
+                            <TextBlock Text="{l:Str Key=Toolbar_Rotate}" />
                         </StackPanel>
                     </Button>
                     <Button
-                        AutomationProperties.Name="{l:Str Key=Toolbar_SaveMore}"
-                        IsEnabled="{x:Bind ViewModel.HasDocument, Mode=OneWay}"
-                        Style="{StaticResource ToolbarAccentMenuButtonStyle}"
-                        ToolTipService.ToolTip="{l:Str Key=Toolbar_SaveMore}">
-                        <FontIcon Glyph="&#xE70D;" Style="{StaticResource ToolbarChevronStyle}" />
+                        AutomationProperties.Name="{l:Str Key=Toolbar_Delete}"
+                        Command="{x:Bind ViewModel.DeleteCommand}"
+                        Style="{StaticResource ToolbarFlatButtonStyle}"
+                        ToolTipService.ToolTip="{l:Str Key=Toolbar_DeleteTooltip}">
+                        <StackPanel Style="{StaticResource ToolbarButtonContentStyle}">
+                            <FontIcon Glyph="&#xE74D;" Style="{StaticResource ToolbarIconStyle}" />
+                            <TextBlock Text="{l:Str Key=Toolbar_Delete}" />
+                        </StackPanel>
+                    </Button>
+                    <Button
+                        AutomationProperties.Name="{l:Str Key=Toolbar_More}"
+                        Style="{StaticResource ToolbarFlatButtonStyle}"
+                        ToolTipService.ToolTip="{l:Str Key=Toolbar_More}">
+                        <StackPanel Style="{StaticResource ToolbarButtonContentStyle}">
+                            <FontIcon Glyph="&#xE712;" Style="{StaticResource ToolbarIconStyle}" />
+                            <TextBlock Text="{l:Str Key=Toolbar_MoreShort}" />
+                        </StackPanel>
                         <Button.Flyout>
-                            <MenuFlyout Placement="BottomEdgeAlignedRight">
+                            <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                                <MenuFlyoutItem Command="{x:Bind ViewModel.MoveUpCommand}" Text="{l:Str Key=Toolbar_MoveUpTooltip}">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="&#xE74A;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                                <MenuFlyoutItem Command="{x:Bind ViewModel.MoveDownCommand}" Text="{l:Str Key=Toolbar_MoveDownTooltip}">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="&#xE74B;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                                <MenuFlyoutItem Command="{x:Bind ViewModel.InsertCommand}" Text="{l:Str Key=Toolbar_InsertMenu}">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="&#xE710;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                                <MenuFlyoutItem Command="{x:Bind ViewModel.ExtractCommand}" Text="{l:Str Key=Toolbar_ExtractMenu}">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="&#xE8C8;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                                <MenuFlyoutSeparator />
+                                <MenuFlyoutItem Command="{x:Bind ViewModel.CopyTextCommand}" Text="{l:Str Key=Text_Copy}">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="&#xE8C8;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                                <MenuFlyoutItem Command="{x:Bind ViewModel.SelectAllTextCommand}" Text="{l:Str Key=Text_SelectAll}">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="&#xE8B3;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                                <MenuFlyoutSeparator />
                                 <MenuFlyoutItem Command="{x:Bind ViewModel.SaveAsCommand}" Text="{l:Str Key=Toolbar_SaveAs}">
                                     <MenuFlyoutItem.Icon>
                                         <FontIcon Glyph="&#xE792;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                                <MenuFlyoutItem Command="{x:Bind ViewModel.EditPropertiesCommand}" Text="{l:Str Key=Toolbar_Properties}">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="&#xE70F;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                                <MenuFlyoutItem Command="{x:Bind Workspace.CloseSelectedCommand}" Text="{l:Str Key=Toolbar_CloseTab}">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="&#xE711;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                                <MenuFlyoutSeparator />
+                                <MenuFlyoutItem Click="OnSettingsClick" Text="{l:Str Key=Toolbar_Settings}">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="&#xE713;" />
                                     </MenuFlyoutItem.Icon>
                                 </MenuFlyoutItem>
                             </MenuFlyout>
                         </Button.Flyout>
                     </Button>
                 </StackPanel>
+            </ScrollViewer>
 
-                <!-- Historique -->
-                <Rectangle Style="{StaticResource ToolbarSeparatorStyle}" />
-                <Button
-                    AutomationProperties.Name="{l:Str Key=Toolbar_Undo}"
-                    Command="{x:Bind ViewModel.UndoCommand}"
-                    Style="{StaticResource ToolbarIconButtonStyle}"
-                    ToolTipService.ToolTip="{l:Str Key=Toolbar_UndoTooltip}">
-                    <FontIcon Glyph="&#xE7A7;" Style="{StaticResource ToolbarIconStyle}" />
-                </Button>
-                <Button
-                    AutomationProperties.Name="{l:Str Key=Toolbar_Redo}"
-                    Command="{x:Bind ViewModel.RedoCommand}"
-                    Style="{StaticResource ToolbarIconButtonStyle}"
-                    ToolTipService.ToolTip="{l:Str Key=Toolbar_RedoTooltip}">
-                    <FontIcon Glyph="&#xE7A6;" Style="{StaticResource ToolbarIconStyle}" />
-                </Button>
+            <!-- Recherche dans le texte (Ctrl+F) : Entrée cherche, Entrée de nouveau passe au résultat suivant. -->
+            <AutoSuggestBox
+                x:Name="SearchBox"
+                Grid.Column="1"
+                AutomationProperties.Name="{l:Str Key=Search_Name}"
+                IsEnabled="{x:Bind ViewModel.HasDocument, Mode=OneWay}"
+                PlaceholderText="{l:Str Key=Search_Placeholder}"
+                QueryIcon="Find"
+                QuerySubmitted="OnSearchQuerySubmitted"
+                Style="{StaticResource SearchBoxStyle}"
+                Text="{x:Bind ViewModel.SearchQuery, Mode=TwoWay}" />
+        </Grid>
 
-                <!-- Pages -->
-                <Rectangle Style="{StaticResource ToolbarSeparatorStyle}" />
-                <Button
-                    AutomationProperties.Name="{l:Str Key=Toolbar_RotateLeft}"
-                    Command="{x:Bind ViewModel.RotateLeftCommand}"
-                    Style="{StaticResource ToolbarIconButtonStyle}"
-                    ToolTipService.ToolTip="{l:Str Key=Toolbar_RotateLeftTooltip}">
-                    <FontIcon Glyph="&#xE7AD;" Style="{StaticResource MirroredIconStyle}" />
-                </Button>
-                <Button
-                    AutomationProperties.Name="{l:Str Key=Toolbar_RotateRight}"
-                    Command="{x:Bind ViewModel.RotateRightCommand}"
-                    Style="{StaticResource ToolbarIconButtonStyle}"
-                    ToolTipService.ToolTip="{l:Str Key=Toolbar_RotateRightTooltip}">
-                    <FontIcon Glyph="&#xE7AD;" Style="{StaticResource ToolbarIconStyle}" />
-                </Button>
-                <Button
-                    AutomationProperties.Name="{l:Str Key=Toolbar_MoveUp}"
-                    Command="{x:Bind ViewModel.MoveUpCommand}"
-                    Style="{StaticResource ToolbarIconButtonStyle}"
-                    ToolTipService.ToolTip="{l:Str Key=Toolbar_MoveUpTooltip}">
-                    <FontIcon Glyph="&#xE74A;" Style="{StaticResource ToolbarIconStyle}" />
-                </Button>
-                <Button
-                    AutomationProperties.Name="{l:Str Key=Toolbar_MoveDown}"
-                    Command="{x:Bind ViewModel.MoveDownCommand}"
-                    Style="{StaticResource ToolbarIconButtonStyle}"
-                    ToolTipService.ToolTip="{l:Str Key=Toolbar_MoveDownTooltip}">
-                    <FontIcon Glyph="&#xE74B;" Style="{StaticResource ToolbarIconStyle}" />
-                </Button>
-                <Button
-                    AutomationProperties.Name="{l:Str Key=Toolbar_Delete}"
-                    Command="{x:Bind ViewModel.DeleteCommand}"
-                    Style="{StaticResource ToolbarIconButtonStyle}"
-                    ToolTipService.ToolTip="{l:Str Key=Toolbar_DeleteTooltip}">
-                    <FontIcon Glyph="&#xE74D;" Style="{StaticResource ToolbarIconStyle}" />
-                </Button>
-                <Button
-                    AutomationProperties.Name="{l:Str Key=Toolbar_Insert}"
-                    Command="{x:Bind ViewModel.InsertCommand}"
-                    Style="{StaticResource ToolbarIconButtonStyle}"
-                    ToolTipService.ToolTip="{l:Str Key=Toolbar_InsertTooltip}">
-                    <FontIcon Glyph="&#xE710;" Style="{StaticResource ToolbarIconStyle}" />
-                </Button>
-                <Button
-                    AutomationProperties.Name="{l:Str Key=Toolbar_Extract}"
-                    Command="{x:Bind ViewModel.ExtractCommand}"
-                    Style="{StaticResource ToolbarIconButtonStyle}"
-                    ToolTipService.ToolTip="{l:Str Key=Toolbar_ExtractTooltip}">
-                    <FontIcon Glyph="&#xE8C8;" Style="{StaticResource ToolbarIconStyle}" />
-                </Button>
+        <!-- Opération en cours, puis document en lecture seule. -->
+        <StackPanel Grid.Row="1">
+            <ProgressBar
+                AutomationProperties.Name="{l:Str Key=Document_Busy}"
+                Style="{StaticResource BusyBarStyle}"
+                Visibility="{x:Bind ui:UiHelpers.VisibleIf(ViewModel.IsBusy), Mode=OneWay}" />
+            <InfoBar
+                x:Name="ReadOnlyBar"
+                IsOpen="{x:Bind ViewModel.IsReadOnly, Mode=OneWay}"
+                Message="{x:Bind ViewModel.ReadOnlyMessage, Mode=OneWay}"
+                Severity="Informational"
+                Style="{StaticResource DocumentInfoBarStyle}"
+                Title="{l:Str Key=Document_ReadOnlyTitle}"
+                Visibility="{x:Bind ui:UiHelpers.VisibleIf(ViewModel.IsReadOnly), Mode=OneWay}" />
+        </StackPanel>
 
-                <!-- Navigation -->
-                <Rectangle Style="{StaticResource ToolbarSeparatorStyle}" />
+        <!-- Accueil : aucun document dans cet onglet. -->
+        <StackPanel
+            Grid.Row="2"
+            Style="{StaticResource EmptyStatePanelStyle}"
+            Visibility="{x:Bind ui:UiHelpers.VisibleIf(ViewModel.IsEmpty), Mode=OneWay}">
+            <FontIcon Glyph="&#xE8A5;" Style="{StaticResource EmptyStateIconStyle}" />
+            <TextBlock Style="{StaticResource EmptyStateTitleStyle}" Text="{l:Str Key=Empty_Title}" />
+            <TextBlock Style="{StaticResource EmptyStateHintStyle}" Text="{l:Str Key=Empty_Hint}" />
+            <Button
+                Command="{x:Bind Workspace.OpenCommand}"
+                Content="{l:Str Key=Empty_Open}"
+                Style="{StaticResource EmptyStateButtonStyle}" />
+        </StackPanel>
+
+        <!-- Document : rail, volet, pages. -->
+        <Grid Grid.Row="2" Visibility="{x:Bind ui:UiHelpers.VisibleIf(ViewModel.HasDocument), Mode=OneWay}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Rail : un clic ouvre le volet, un second clic sur le même le referme. -->
+            <StackPanel
+                x:Name="Rail"
+                AutomationProperties.Name="{l:Str Key=Rail_Name}"
+                Style="{StaticResource RailStyle}">
+                <ToggleButton
+                    x:Name="PagesButton"
+                    AutomationProperties.Name="{l:Str Key=Panel_Pages}"
+                    Click="OnRailClick"
+                    Style="{StaticResource RailButtonStyle}"
+                    Tag="Pages"
+                    ToolTipService.ToolTip="{l:Str Key=Panel_Pages}">
+                    <FontIcon Glyph="&#xE8A9;" Style="{StaticResource RailIconStyle}" />
+                </ToggleButton>
+                <ToggleButton
+                    x:Name="OutlineButton"
+                    AutomationProperties.Name="{l:Str Key=Panel_Outline}"
+                    Click="OnRailClick"
+                    Style="{StaticResource RailButtonStyle}"
+                    Tag="Outline"
+                    ToolTipService.ToolTip="{l:Str Key=Panel_Outline}">
+                    <FontIcon Glyph="&#xE8FD;" Style="{StaticResource RailIconStyle}" />
+                </ToggleButton>
+                <ToggleButton
+                    x:Name="SearchButton"
+                    AutomationProperties.Name="{l:Str Key=Panel_Search}"
+                    Click="OnRailClick"
+                    Style="{StaticResource RailButtonStyle}"
+                    Tag="Search"
+                    ToolTipService.ToolTip="{l:Str Key=Panel_Search}">
+                    <FontIcon Glyph="&#xE721;" Style="{StaticResource RailIconStyle}" />
+                </ToggleButton>
+                <ToggleButton
+                    x:Name="PropertiesButton"
+                    AutomationProperties.Name="{l:Str Key=Panel_Properties}"
+                    Click="OnRailClick"
+                    Style="{StaticResource RailButtonStyle}"
+                    Tag="Properties"
+                    ToolTipService.ToolTip="{l:Str Key=Panel_Properties}">
+                    <FontIcon Glyph="&#xE946;" Style="{StaticResource RailIconStyle}" />
+                </ToggleButton>
+            </StackPanel>
+
+            <!-- Volet : un seul contenu visible à la fois, choisi dans le rail. -->
+            <Grid
+                x:Name="SidePanelHost"
+                Grid.Column="1"
+                Style="{StaticResource SidePanelStyle}"
+                Visibility="{x:Bind ui:UiHelpers.VisibleIf(Settings.ShowThumbnails), Mode=OneWay}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <TextBlock x:Name="PanelTitle" Style="{StaticResource PanelTitleStyle}" />
+
+                <!-- Pages : vignettes (sélection multiple, glisser-déposer pour réordonner). -->
+                <ListView
+                    x:Name="Thumbnails"
+                    Grid.Row="1"
+                    AllowDrop="{x:Bind ViewModel.CanEdit, Mode=OneWay}"
+                    AutomationProperties.Name="{l:Str Key=Thumbnails_Name}"
+                    CanDragItems="{x:Bind ViewModel.CanEdit, Mode=OneWay}"
+                    CanReorderItems="{x:Bind ViewModel.CanEdit, Mode=OneWay}"
+                    ContainerContentChanging="OnThumbnailContainerContentChanging"
+                    DragItemsCompleted="OnThumbnailsDragItemsCompleted"
+                    DragItemsStarting="OnThumbnailsDragItemsStarting"
+                    ItemsSource="{x:Bind ViewModel.Pages}"
+                    KeyDown="OnThumbnailsKeyDown"
+                    SelectionChanged="OnThumbnailsSelectionChanged"
+                    Style="{StaticResource ThumbnailsListStyle}">
+                    <ListView.ItemTemplate>
+                        <DataTemplate x:DataType="vm:PageItemViewModel">
+                            <StackPanel Style="{StaticResource ThumbnailItemStyle}">
+                                <Border Height="{x:Bind ThumbnailHeight, Mode=OneWay}" Style="{StaticResource ThumbnailBorderStyle}">
+                                    <Image Stretch="Fill" />
+                                </Border>
+                                <TextBlock Style="{StaticResource ThumbnailLabelStyle}" Text="{x:Bind Label, Mode=OneWay}" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+
+                <!-- Plan : signets du document, un clic montre la page. -->
+                <Grid x:Name="OutlinePanel" Grid.Row="1">
+                    <TreeView
+                        x:Name="OutlineTree"
+                        AutomationProperties.Name="{l:Str Key=Panel_Outline}"
+                        ItemInvoked="OnOutlineItemInvoked"
+                        Style="{StaticResource OutlineTreeStyle}">
+                        <TreeView.ItemTemplate>
+                            <DataTemplate x:DataType="vm:OutlineItemViewModel">
+                                <TreeViewItem AutomationProperties.Name="{x:Bind Title}" ItemsSource="{x:Bind Children}">
+                                    <Grid Style="{StaticResource OutlineItemStyle}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Style="{StaticResource OutlineTitleStyle}" Text="{x:Bind Title}" />
+                                        <TextBlock
+                                            Grid.Column="1"
+                                            Style="{StaticResource OutlinePageStyle}"
+                                            Text="{x:Bind PageLabel}" />
+                                    </Grid>
+                                </TreeViewItem>
+                            </DataTemplate>
+                        </TreeView.ItemTemplate>
+                    </TreeView>
+                    <TextBlock
+                        x:Name="NoOutlineText"
+                        Style="{StaticResource PanelHintStyle}"
+                        Text="{l:Str Key=Outline_None}" />
+                </Grid>
+
+                <!-- Recherche : résumé, résultat précédent / suivant, liste des occurrences. -->
+                <Grid x:Name="SearchPanel" Grid.Row="1">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <Grid Style="{StaticResource PanelToolbarStyle}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource PanelStatusStyle}" Text="{x:Bind ui:UiHelpers.SearchStatusOrHint(ViewModel.SearchStatus), Mode=OneWay}" />
+                        <Button
+                            Grid.Column="1"
+                            AutomationProperties.Name="{l:Str Key=Search_Previous}"
+                            Command="{x:Bind ViewModel.PreviousSearchResultCommand}"
+                            Style="{StaticResource PanelIconButtonStyle}"
+                            ToolTipService.ToolTip="{l:Str Key=Search_PreviousTooltip}">
+                            <FontIcon Glyph="&#xE70E;" Style="{StaticResource PanelIconStyle}" />
+                        </Button>
+                        <Button
+                            Grid.Column="2"
+                            AutomationProperties.Name="{l:Str Key=Search_Next}"
+                            Command="{x:Bind ViewModel.NextSearchResultCommand}"
+                            Style="{StaticResource PanelIconButtonStyle}"
+                            ToolTipService.ToolTip="{l:Str Key=Search_NextTooltip}">
+                            <FontIcon Glyph="&#xE70D;" Style="{StaticResource PanelIconStyle}" />
+                        </Button>
+                    </Grid>
+                    <ListView
+                        x:Name="SearchResultsList"
+                        Grid.Row="1"
+                        AutomationProperties.Name="{l:Str Key=Search_Results}"
+                        IsItemClickEnabled="True"
+                        ItemClick="OnSearchResultClick"
+                        ItemsSource="{x:Bind ViewModel.SearchResults}"
+                        Style="{StaticResource SearchResultsListStyle}">
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="vm:SearchResultViewModel">
+                                <StackPanel AutomationProperties.Name="{x:Bind AccessibleName}" Style="{StaticResource SearchResultStyle}">
+                                    <TextBlock Style="{StaticResource SearchResultPageStyle}" Text="{x:Bind PageLabel}" />
+                                    <TextBlock Style="{StaticResource SearchResultTextStyle}">
+                                        <Run Text="{x:Bind Before}" /><Bold><Run Text="{x:Bind Text}" /></Bold><Run Text="{x:Bind After}" />
+                                    </TextBlock>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </Grid>
+
+                <!-- Propriétés : métadonnées, fichier, droits ; « Modifier » ouvre la boîte de dialogue. -->
+                <ScrollViewer
+                    x:Name="PropertiesPanel"
+                    Grid.Row="1"
+                    Style="{StaticResource PanelScrollerStyle}">
+                    <StackPanel Style="{StaticResource PropertiesPanelStyle}">
+                        <ItemsRepeater ItemsSource="{x:Bind ViewModel.Properties}">
+                            <ItemsRepeater.Layout>
+                                <StackLayout Spacing="{StaticResource PropertySpacing}" />
+                            </ItemsRepeater.Layout>
+                            <ItemsRepeater.ItemTemplate>
+                                <DataTemplate x:DataType="vm:DocumentPropertyItem">
+                                    <StackPanel Style="{StaticResource PropertyItemStyle}">
+                                        <TextBlock Style="{StaticResource PropertyLabelStyle}" Text="{x:Bind Label}" />
+                                        <TextBlock Style="{StaticResource PropertyValueStyle}" Text="{x:Bind Value}" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsRepeater.ItemTemplate>
+                        </ItemsRepeater>
+                        <Button
+                            Command="{x:Bind ViewModel.EditPropertiesCommand}"
+                            Content="{l:Str Key=Properties_Edit}"
+                            Style="{StaticResource PanelButtonStyle}" />
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+
+            <Border Grid.Column="2" Style="{StaticResource ReaderSurfaceStyle}">
+                <ScrollViewer
+                    x:Name="Scroller"
+                    AutomationProperties.Name="{l:Str Key=Reader_Name}"
+                    KeyDown="OnScrollerKeyDown"
+                    Style="{StaticResource ReaderScrollViewerStyle}"
+                    ViewChanged="OnScrollerViewChanged">
+                    <ScrollViewer.ContextFlyout>
+                        <MenuFlyout>
+                            <MenuFlyoutItem Command="{x:Bind ViewModel.CopyTextCommand}" Text="{l:Str Key=Text_Copy}">
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon Glyph="&#xE8C8;" />
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutItem Command="{x:Bind ViewModel.SelectAllTextCommand}" Text="{l:Str Key=Text_SelectAll}">
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon Glyph="&#xE8B3;" />
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                        </MenuFlyout>
+                    </ScrollViewer.ContextFlyout>
+                    <ItemsRepeater
+                        x:Name="PagesRepeater"
+                        Margin="{StaticResource ReaderPadding}"
+                        HorizontalAlignment="Center"
+                        DoubleTapped="OnPagesDoubleTapped"
+                        ElementClearing="OnPageElementClearing"
+                        ElementIndexChanged="OnPageElementIndexChanged"
+                        ElementPrepared="OnPageElementPrepared"
+                        ItemsSource="{x:Bind ViewModel.Pages}"
+                        PointerCaptureLost="OnPagesPointerReleased"
+                        PointerMoved="OnPagesPointerMoved"
+                        PointerPressed="OnPagesPointerPressed"
+                        PointerReleased="OnPagesPointerReleased">
+                        <ItemsRepeater.Layout>
+                            <StackLayout Spacing="{StaticResource PageSpacing}" />
+                        </ItemsRepeater.Layout>
+                        <ItemsRepeater.ItemTemplate>
+                            <DataTemplate x:DataType="vm:PageItemViewModel">
+                                <Border
+                                    Width="{x:Bind DisplayWidth, Mode=OneWay}"
+                                    Height="{x:Bind DisplayHeight, Mode=OneWay}"
+                                    AutomationProperties.Name="{x:Bind ui:UiHelpers.PageName(Number), Mode=OneWay}"
+                                    Style="{StaticResource PageBorderStyle}">
+                                    <!-- Image de la page, puis surlignage du texte sélectionné (repère à 100 %, mis à l'échelle). -->
+                                    <views:TextPageSurface>
+                                        <Image Stretch="Fill" />
+                                        <Viewbox Style="{StaticResource TextLayerStyle}">
+                                            <Canvas Width="{x:Bind BaseWidth, Mode=OneWay}" Height="{x:Bind BaseHeight, Mode=OneWay}" />
+                                        </Viewbox>
+                                    </views:TextPageSurface>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsRepeater.ItemTemplate>
+                    </ItemsRepeater>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+
+        <!-- Barre d'état : page, état du document, zoom. -->
+        <Grid
+            Grid.Row="3"
+            Style="{StaticResource StatusBarStyle}"
+            Visibility="{x:Bind ui:UiHelpers.VisibleIf(ViewModel.HasDocument), Mode=OneWay}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Style="{StaticResource StatusGroupStyle}">
                 <Button
                     AutomationProperties.Name="{l:Str Key=Toolbar_PreviousPage}"
                     Command="{x:Bind ViewModel.PreviousPageCommand}"
-                    Style="{StaticResource ToolbarIconButtonStyle}"
+                    Style="{StaticResource StatusIconButtonStyle}"
                     ToolTipService.ToolTip="{l:Str Key=Toolbar_PreviousPage}">
-                    <FontIcon Glyph="&#xE70E;" Style="{StaticResource ToolbarIconStyle}" />
+                    <FontIcon Glyph="&#xE70E;" Style="{StaticResource StatusIconStyle}" />
                 </Button>
-                <StackPanel Style="{StaticResource ToolbarGroupStyle}">
-                    <NumberBox
-                        x:Name="PageBox"
-                        AutomationProperties.Name="{l:Str Key=Toolbar_PageNumber}"
-                        IsEnabled="{x:Bind ViewModel.HasDocument, Mode=OneWay}"
-                        Maximum="{x:Bind ui:UiHelpers.PageMaximum(ViewModel.PageCount), Mode=OneWay}"
-                        Style="{StaticResource PageNumberBoxStyle}"
-                        ValueChanged="OnPageBoxValueChanged"
-                        Value="{x:Bind ui:UiHelpers.ToDouble(ViewModel.CurrentPageNumber), Mode=OneWay}" />
-                    <TextBlock Style="{StaticResource ToolbarTextStyle}" Text="{x:Bind ui:UiHelpers.PageCountText(ViewModel.PageCount), Mode=OneWay}" />
-                </StackPanel>
+                <TextBlock Style="{StaticResource StatusTextStyle}" Text="{l:Str Key=Status_Page}" />
+                <NumberBox
+                    x:Name="PageBox"
+                    AutomationProperties.Name="{l:Str Key=Toolbar_PageNumber}"
+                    IsEnabled="{x:Bind ViewModel.HasDocument, Mode=OneWay}"
+                    Maximum="{x:Bind ui:UiHelpers.PageMaximum(ViewModel.PageCount), Mode=OneWay}"
+                    Style="{StaticResource PageNumberBoxStyle}"
+                    ValueChanged="OnPageBoxValueChanged"
+                    Value="{x:Bind ui:UiHelpers.ToDouble(ViewModel.CurrentPageNumber), Mode=OneWay}" />
+                <TextBlock Style="{StaticResource StatusTextStyle}" Text="{x:Bind ui:UiHelpers.PageCountText(ViewModel.PageCount), Mode=OneWay}" />
                 <Button
                     AutomationProperties.Name="{l:Str Key=Toolbar_NextPage}"
                     Command="{x:Bind ViewModel.NextPageCommand}"
-                    Style="{StaticResource ToolbarIconButtonStyle}"
+                    Style="{StaticResource StatusIconButtonStyle}"
                     ToolTipService.ToolTip="{l:Str Key=Toolbar_NextPage}">
-                    <FontIcon Glyph="&#xE70D;" Style="{StaticResource ToolbarIconStyle}" />
+                    <FontIcon Glyph="&#xE70D;" Style="{StaticResource StatusIconStyle}" />
                 </Button>
+            </StackPanel>
 
-                <!-- Zoom -->
-                <Rectangle Style="{StaticResource ToolbarSeparatorStyle}" />
+            <StackPanel Grid.Column="1" Style="{StaticResource StatusGroupStyle}">
+                <Rectangle Style="{StaticResource StatusSeparatorStyle}" />
+                <FontIcon
+                    Glyph="&#xE72E;"
+                    Style="{StaticResource StatusIconStyle}"
+                    Visibility="{x:Bind ui:UiHelpers.VisibleIf(ViewModel.IsReadOnly), Mode=OneWay}" />
+                <TextBlock
+                    x:Name="StatusText"
+                    Style="{StaticResource StatusTextStyle}"
+                    Text="{x:Bind ViewModel.StatusText, Mode=OneWay}" />
+            </StackPanel>
+
+            <StackPanel Grid.Column="3" Style="{StaticResource StatusGroupStyle}">
+                <Button
+                    AutomationProperties.Name="{l:Str Key=Zoom_FitWidth}"
+                    Command="{x:Bind ViewModel.FitWidthCommand}"
+                    Style="{StaticResource StatusIconButtonStyle}"
+                    ToolTipService.ToolTip="{l:Str Key=Zoom_FitWidth}">
+                    <FontIcon Glyph="&#xE9A6;" Style="{StaticResource StatusIconStyle}" />
+                </Button>
                 <Button
                     AutomationProperties.Name="{l:Str Key=Toolbar_ZoomOut}"
                     Command="{x:Bind ViewModel.ZoomOutCommand}"
-                    Style="{StaticResource ToolbarIconButtonStyle}"
+                    Style="{StaticResource StatusIconButtonStyle}"
                     ToolTipService.ToolTip="{l:Str Key=Toolbar_ZoomOutTooltip}">
-                    <FontIcon Glyph="&#xE71F;" Style="{StaticResource ToolbarIconStyle}" />
+                    <FontIcon Glyph="&#xE71F;" Style="{StaticResource StatusIconStyle}" />
+                </Button>
+                <Slider
+                    x:Name="ZoomSlider"
+                    AutomationProperties.Name="{l:Str Key=Toolbar_Zoom}"
+                    IsEnabled="{x:Bind ViewModel.HasDocument, Mode=OneWay}"
+                    Style="{StaticResource ZoomSliderStyle}"
+                    ValueChanged="OnZoomSliderValueChanged"
+                    Value="{x:Bind ui:UiHelpers.ZoomPercent(ViewModel.Zoom), Mode=OneWay}" />
+                <Button
+                    AutomationProperties.Name="{l:Str Key=Toolbar_ZoomIn}"
+                    Command="{x:Bind ViewModel.ZoomInCommand}"
+                    Style="{StaticResource StatusIconButtonStyle}"
+                    ToolTipService.ToolTip="{l:Str Key=Toolbar_ZoomInTooltip}">
+                    <FontIcon Glyph="&#xE710;" Style="{StaticResource StatusIconStyle}" />
                 </Button>
                 <DropDownButton
                     AutomationProperties.Name="{l:Str Key=Toolbar_Zoom}"
@@ -176,7 +574,7 @@
                     IsEnabled="{x:Bind ViewModel.HasDocument, Mode=OneWay}"
                     Style="{StaticResource ZoomButtonStyle}">
                     <DropDownButton.Flyout>
-                        <MenuFlyout Placement="Bottom">
+                        <MenuFlyout Placement="TopEdgeAlignedRight">
                             <MenuFlyoutItem Command="{x:Bind ViewModel.FitWidthCommand}" Text="{l:Str Key=Zoom_FitWidth}" />
                             <MenuFlyoutItem Command="{x:Bind ViewModel.ActualSizeCommand}" Text="{l:Str Key=Zoom_ActualSize}" />
                             <MenuFlyoutSeparator />
@@ -207,190 +605,7 @@
                         </MenuFlyout>
                     </DropDownButton.Flyout>
                 </DropDownButton>
-                <Button
-                    AutomationProperties.Name="{l:Str Key=Toolbar_ZoomIn}"
-                    Command="{x:Bind ViewModel.ZoomInCommand}"
-                    Style="{StaticResource ToolbarIconButtonStyle}"
-                    ToolTipService.ToolTip="{l:Str Key=Toolbar_ZoomInTooltip}">
-                    <FontIcon Glyph="&#xE8A3;" Style="{StaticResource ToolbarIconStyle}" />
-                </Button>
-
-                <!-- Affichage et autres commandes -->
-                <Rectangle Style="{StaticResource ToolbarSeparatorStyle}" />
-                <ToggleButton
-                    IsChecked="{x:Bind Settings.ShowThumbnails, Mode=TwoWay}"
-                    Style="{StaticResource ToolbarToggleButtonStyle}"
-                    ToolTipService.ToolTip="{l:Str Key=Toolbar_ThumbnailsTooltip}">
-                    <StackPanel Style="{StaticResource ToolbarButtonContentStyle}">
-                        <FontIcon Glyph="&#xE8A9;" Style="{StaticResource ToolbarIconStyle}" />
-                        <TextBlock Text="{l:Str Key=Toolbar_Thumbnails}" />
-                    </StackPanel>
-                </ToggleButton>
-                <Button
-                    AutomationProperties.Name="{l:Str Key=Toolbar_More}"
-                    Style="{StaticResource ToolbarIconButtonStyle}"
-                    ToolTipService.ToolTip="{l:Str Key=Toolbar_More}">
-                    <FontIcon Glyph="&#xE712;" Style="{StaticResource ToolbarIconStyle}" />
-                    <Button.Flyout>
-                        <MenuFlyout Placement="BottomEdgeAlignedRight">
-                            <MenuFlyoutItem Command="{x:Bind ViewModel.CopyTextCommand}" Text="{l:Str Key=Text_Copy}">
-                                <MenuFlyoutItem.Icon>
-                                    <FontIcon Glyph="&#xE8C8;" />
-                                </MenuFlyoutItem.Icon>
-                            </MenuFlyoutItem>
-                            <MenuFlyoutItem Command="{x:Bind ViewModel.SelectAllTextCommand}" Text="{l:Str Key=Text_SelectAll}">
-                                <MenuFlyoutItem.Icon>
-                                    <FontIcon Glyph="&#xE8B3;" />
-                                </MenuFlyoutItem.Icon>
-                            </MenuFlyoutItem>
-                            <MenuFlyoutSeparator />
-                            <MenuFlyoutItem Command="{x:Bind ViewModel.SaveAsCommand}" Text="{l:Str Key=Toolbar_SaveAs}">
-                                <MenuFlyoutItem.Icon>
-                                    <FontIcon Glyph="&#xE792;" />
-                                </MenuFlyoutItem.Icon>
-                            </MenuFlyoutItem>
-                            <MenuFlyoutItem Command="{x:Bind ViewModel.EditPropertiesCommand}" Text="{l:Str Key=Toolbar_Properties}">
-                                <MenuFlyoutItem.Icon>
-                                    <FontIcon Glyph="&#xE946;" />
-                                </MenuFlyoutItem.Icon>
-                            </MenuFlyoutItem>
-                            <MenuFlyoutItem Command="{x:Bind ViewModel.CloseDocumentCommand}" Text="{l:Str Key=Toolbar_Close}">
-                                <MenuFlyoutItem.Icon>
-                                    <FontIcon Glyph="&#xE711;" />
-                                </MenuFlyoutItem.Icon>
-                            </MenuFlyoutItem>
-                            <MenuFlyoutSeparator />
-                            <MenuFlyoutItem Click="OnSettingsClick" Text="{l:Str Key=Toolbar_Settings}">
-                                <MenuFlyoutItem.Icon>
-                                    <FontIcon Glyph="&#xE713;" />
-                                </MenuFlyoutItem.Icon>
-                            </MenuFlyoutItem>
-                        </MenuFlyout>
-                    </Button.Flyout>
-                </Button>
             </StackPanel>
-        </ScrollViewer>
-
-        <!-- Opération en cours, puis document en lecture seule. -->
-        <StackPanel Grid.Row="1">
-            <ProgressBar
-                AutomationProperties.Name="{l:Str Key=Document_Busy}"
-                Style="{StaticResource BusyBarStyle}"
-                Visibility="{x:Bind ui:UiHelpers.VisibleIf(ViewModel.IsBusy), Mode=OneWay}" />
-            <InfoBar
-                x:Name="ReadOnlyBar"
-                IsOpen="{x:Bind ViewModel.IsReadOnly, Mode=OneWay}"
-                Message="{x:Bind ViewModel.ReadOnlyMessage, Mode=OneWay}"
-                Severity="Informational"
-                Style="{StaticResource DocumentInfoBarStyle}"
-                Title="{l:Str Key=Document_ReadOnlyTitle}"
-                Visibility="{x:Bind ui:UiHelpers.VisibleIf(ViewModel.IsReadOnly), Mode=OneWay}" />
-        </StackPanel>
-
-        <!-- Aucun document ouvert. -->
-        <StackPanel
-            Grid.Row="2"
-            Style="{StaticResource EmptyStatePanelStyle}"
-            Visibility="{x:Bind ui:UiHelpers.VisibleIf(ViewModel.IsEmpty), Mode=OneWay}">
-            <FontIcon Glyph="&#xE8A5;" Style="{StaticResource EmptyStateIconStyle}" />
-            <TextBlock Style="{StaticResource EmptyStateTitleStyle}" Text="{l:Str Key=Empty_Title}" />
-            <TextBlock Style="{StaticResource EmptyStateHintStyle}" Text="{l:Str Key=Empty_Hint}" />
-            <Button
-                Command="{x:Bind ViewModel.OpenCommand}"
-                Content="{l:Str Key=Empty_Open}"
-                Style="{StaticResource EmptyStateButtonStyle}" />
-        </StackPanel>
-
-        <!-- Document : vignettes à gauche, pages à droite. -->
-        <Grid Grid.Row="2" Visibility="{x:Bind ui:UiHelpers.VisibleIf(ViewModel.HasDocument), Mode=OneWay}">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-
-            <ListView
-                x:Name="Thumbnails"
-                AllowDrop="{x:Bind ViewModel.CanEdit, Mode=OneWay}"
-                AutomationProperties.Name="{l:Str Key=Thumbnails_Name}"
-                CanDragItems="{x:Bind ViewModel.CanEdit, Mode=OneWay}"
-                CanReorderItems="{x:Bind ViewModel.CanEdit, Mode=OneWay}"
-                ContainerContentChanging="OnThumbnailContainerContentChanging"
-                DragItemsCompleted="OnThumbnailsDragItemsCompleted"
-                DragItemsStarting="OnThumbnailsDragItemsStarting"
-                ItemsSource="{x:Bind ViewModel.Pages}"
-                KeyDown="OnThumbnailsKeyDown"
-                SelectionChanged="OnThumbnailsSelectionChanged"
-                Style="{StaticResource ThumbnailsListStyle}"
-                Visibility="{x:Bind ui:UiHelpers.VisibleIf(Settings.ShowThumbnails), Mode=OneWay}">
-                <ListView.ItemTemplate>
-                    <DataTemplate x:DataType="vm:PageItemViewModel">
-                        <StackPanel Style="{StaticResource ThumbnailItemStyle}">
-                            <Border Height="{x:Bind ThumbnailHeight, Mode=OneWay}" Style="{StaticResource ThumbnailBorderStyle}">
-                                <Image Stretch="Fill" />
-                            </Border>
-                            <TextBlock Style="{StaticResource ThumbnailLabelStyle}" Text="{x:Bind Label, Mode=OneWay}" />
-                        </StackPanel>
-                    </DataTemplate>
-                </ListView.ItemTemplate>
-            </ListView>
-
-            <Border Grid.Column="1" Style="{StaticResource ReaderSurfaceStyle}">
-                <ScrollViewer
-                    x:Name="Scroller"
-                    AutomationProperties.Name="{l:Str Key=Reader_Name}"
-                    KeyDown="OnScrollerKeyDown"
-                    Style="{StaticResource ReaderScrollViewerStyle}"
-                    ViewChanged="OnScrollerViewChanged">
-                    <ScrollViewer.ContextFlyout>
-                        <MenuFlyout>
-                            <MenuFlyoutItem Command="{x:Bind ViewModel.CopyTextCommand}" Text="{l:Str Key=Text_Copy}">
-                                <MenuFlyoutItem.Icon>
-                                    <FontIcon Glyph="&#xE8C8;" />
-                                </MenuFlyoutItem.Icon>
-                            </MenuFlyoutItem>
-                            <MenuFlyoutItem Command="{x:Bind ViewModel.SelectAllTextCommand}" Text="{l:Str Key=Text_SelectAll}">
-                                <MenuFlyoutItem.Icon>
-                                    <FontIcon Glyph="&#xE8B3;" />
-                                </MenuFlyoutItem.Icon>
-                            </MenuFlyoutItem>
-                        </MenuFlyout>
-                    </ScrollViewer.ContextFlyout>
-                    <ItemsRepeater
-                        x:Name="PagesRepeater"
-                        Margin="{StaticResource ReaderPadding}"
-                        HorizontalAlignment="Center"
-                        ElementClearing="OnPageElementClearing"
-                        ElementIndexChanged="OnPageElementIndexChanged"
-                        ElementPrepared="OnPageElementPrepared"
-                        ItemsSource="{x:Bind ViewModel.Pages}"
-                        DoubleTapped="OnPagesDoubleTapped"
-                        PointerCaptureLost="OnPagesPointerReleased"
-                        PointerMoved="OnPagesPointerMoved"
-                        PointerPressed="OnPagesPointerPressed"
-                        PointerReleased="OnPagesPointerReleased">
-                        <ItemsRepeater.Layout>
-                            <StackLayout Spacing="{StaticResource PageSpacing}" />
-                        </ItemsRepeater.Layout>
-                        <ItemsRepeater.ItemTemplate>
-                            <DataTemplate x:DataType="vm:PageItemViewModel">
-                                <Border
-                                    Width="{x:Bind DisplayWidth, Mode=OneWay}"
-                                    Height="{x:Bind DisplayHeight, Mode=OneWay}"
-                                    AutomationProperties.Name="{x:Bind ui:UiHelpers.PageName(Number), Mode=OneWay}"
-                                    Style="{StaticResource PageBorderStyle}">
-                                    <!-- Image de la page, puis surlignage du texte sélectionné (repère à 100 %, mis à l'échelle). -->
-                                    <views:TextPageSurface>
-                                        <Image Stretch="Fill" />
-                                        <Viewbox Style="{StaticResource TextLayerStyle}">
-                                            <Canvas Width="{x:Bind BaseWidth, Mode=OneWay}" Height="{x:Bind BaseHeight, Mode=OneWay}" />
-                                        </Viewbox>
-                                    </views:TextPageSurface>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsRepeater.ItemTemplate>
-                    </ItemsRepeater>
-                </ScrollViewer>
-            </Border>
         </Grid>
     </Grid>
 </UserControl>

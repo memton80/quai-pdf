@@ -29,8 +29,13 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     public partial int ThemeIndex { get; set; }
 
+    /// <summary>Volet latéral ouvert (vignettes, plan, recherche ou propriétés).</summary>
     [ObservableProperty]
     public partial bool ShowThumbnails { get; set; }
+
+    /// <summary>Dernier volet choisi dans le rail.</summary>
+    [ObservableProperty]
+    public partial SidePanel SidePanel { get; set; }
 
     [ObservableProperty]
     public partial bool CheckForUpdates { get; set; }
@@ -59,6 +64,14 @@ public sealed partial class SettingsViewModel : ObservableObject
         }
     }
 
+    partial void OnSidePanelChanged(SidePanel value)
+    {
+        if (!_loading && Enum.IsDefined(value))
+        {
+            _settings.Update(s => s.SidePanel = value);
+        }
+    }
+
     private void Load()
     {
         _loading = true;
@@ -67,6 +80,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             var current = _settings.Current;
             ThemeIndex = (int)current.Theme;
             ShowThumbnails = current.ShowThumbnails;
+            SidePanel = current.SidePanel;
             CheckForUpdates = current.CheckForUpdates;
         }
         finally

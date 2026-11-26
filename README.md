@@ -18,7 +18,9 @@
 
 ## Ce que fait Quai PDF
 
-- **Lire.** Les pages défilent, avec les vignettes à gauche, le zoom (`Ctrl+molette`, `Ctrl+Plus`, `Ctrl+Moins`) et l'ajustement à la largeur.
+- **Plusieurs documents.** Chaque PDF s'ouvre dans son onglet, en haut de la fenêtre, comme dans le Bloc-notes de Windows 11.
+- **Lire.** Les pages défilent, avec le zoom (`Ctrl+molette`, `Ctrl+Plus`, `Ctrl+Moins`, curseur de la barre d'état) et l'ajustement à la largeur. À gauche, un volet au choix : les vignettes des pages, le plan du document (ses chapitres), les résultats de la recherche ou les propriétés.
+- **Rechercher.** `Ctrl+F`, un mot, `Entrée` : toutes les occurrences, sans se soucier des majuscules ni des accents, et `F3` pour passer à la suivante.
 - **Copier du texte.** Sélectionnez à la souris comme sur une page web (double-clic pour un mot, `Ctrl+A` pour tout), puis `Ctrl+C`.
 
 ![Un mot sélectionné à la souris, prêt à être copié](docs/images/texte.png)
@@ -42,7 +44,7 @@ Quai PDF est une application Windows native (WinUI 3) : **aucune page web, aucun
 
 ## Toujours à jour, en un clic
 
-Comme [Quai](https://github.com/memton80/quai-ssh) : quand une nouvelle version sort, un bandeau la propose. Un clic sur **Mettre à jour** la télécharge, vérifie qu'elle est bien celle publiée, l'installe, puis Quai PDF redémarre tout seul et rouvre votre document (il propose d'abord d'enregistrer vos modifications).
+Comme [Quai](https://github.com/memton80/quai-ssh) : quand une nouvelle version sort, un bandeau la propose. Un clic sur **Mettre à jour** la télécharge, vérifie qu'elle est bien celle publiée, l'installe, puis Quai PDF redémarre tout seul et rouvre vos documents (il propose d'abord d'enregistrer vos modifications).
 
 ## Installer Quai PDF
 

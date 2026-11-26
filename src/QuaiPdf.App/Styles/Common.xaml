@@ -8,8 +8,78 @@
         Les marges de la zone de lecture (ReaderPadding, PageSpacing) servent aussi au calcul de la page visible.
     -->
 
+    <!--
+        Onglet sélectionné et contenu de l'onglet : même couche posée sur le Mica, pour qu'ils se rejoignent (comme
+        le Bloc-notes ou le Terminal de Windows 11). La bande des onglets reste transparente, sur le Mica.
+    -->
+    <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Default">
+            <StaticResource x:Key="TabViewItemHeaderBackgroundSelected" ResourceKey="LayerOnMicaBaseAltFillColorDefaultBrush" />
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="Light">
+            <StaticResource x:Key="TabViewItemHeaderBackgroundSelected" ResourceKey="LayerOnMicaBaseAltFillColorDefaultBrush" />
+        </ResourceDictionary>
+    </ResourceDictionary.ThemeDictionaries>
+
     <Thickness x:Key="ReaderPadding">24,24,24,24</Thickness>
     <x:Double x:Key="PageSpacing">16</x:Double>
+
+    <!-- ===== Onglets (barre de titre) ===== -->
+
+    <Style x:Key="DocumentTabsStyle" TargetType="TabView">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="VerticalAlignment" Value="Top" />
+        <Setter Property="IsAddTabButtonVisible" Value="True" />
+        <Setter Property="TabWidthMode" Value="Equal" />
+        <Setter Property="CanReorderTabs" Value="True" />
+        <Setter Property="CanDragTabs" Value="False" />
+        <Setter Property="AllowDropTabs" Value="False" />
+    </Style>
+
+    <Style x:Key="DocumentTabStyle" TargetType="TabViewItem">
+        <Setter Property="MaxWidth" Value="260" />
+    </Style>
+
+    <Style x:Key="TabHeaderStyle" TargetType="StackPanel">
+        <Setter Property="Orientation" Value="Horizontal" />
+        <Setter Property="Spacing" Value="8" />
+    </Style>
+
+    <Style x:Key="TabTitleStyle" TargetType="TextBlock">
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        <Setter Property="MaxWidth" Value="180" />
+    </Style>
+
+    <!-- Point d'accent à côté du nom : document modifié, pas encore enregistré. -->
+    <Style x:Key="TabModifiedDotStyle" TargetType="Ellipse">
+        <Setter Property="Width" Value="7" />
+        <Setter Property="Height" Value="7" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Fill" Value="{ThemeResource AccentFillColorDefaultBrush}" />
+    </Style>
+
+    <!-- Pied de la bande des onglets : de quoi saisir la fenêtre, plus la place des boutons de la barre de titre. -->
+    <Style x:Key="TitleBarDragRegionStyle" TargetType="Grid">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="MinWidth" Value="188" />
+    </Style>
+
+    <!-- ===== Contenu d'un onglet ===== -->
+
+    <Style x:Key="DocumentRootStyle" TargetType="Grid">
+        <Setter Property="Background" Value="{ThemeResource LayerOnMicaBaseAltFillColorDefaultBrush}" />
+    </Style>
+
+    <Style x:Key="CommandAreaStyle" TargetType="Grid">
+        <Setter Property="Padding" Value="8,6,8,6" />
+        <Setter Property="ColumnSpacing" Value="12" />
+    </Style>
+
+    <Style x:Key="SearchBoxStyle" TargetType="AutoSuggestBox">
+        <Setter Property="Width" Value="260" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
 
     <!--
         Barre d'outils, sous la barre de titre : boutons arrondis de Windows 11 (fond, bordure, coins de 4 px), tous
@@ -18,7 +88,7 @@
     <x:Double x:Key="ToolbarControlHeight">32</x:Double>
 
     <Style x:Key="ToolbarScrollerStyle" TargetType="ScrollViewer">
-        <Setter Property="Margin" Value="12,4,12,8" />
+        <Setter Property="Margin" Value="0" />
         <Setter Property="HorizontalScrollMode" Value="Auto" />
         <Setter Property="HorizontalScrollBarVisibility" Value="Auto" />
         <Setter Property="VerticalScrollMode" Value="Disabled" />
@@ -43,22 +113,25 @@
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
 
+    <!--
+        Bouton plat de la barre de commandes (comme le Bloc-notes et l'Explorateur de Windows 11) : fond et bordure
+        n'apparaissent qu'au survol. « Enregistrer », le bouton principal, reste en couleur d'accent.
+    -->
+    <Style
+        x:Key="ToolbarFlatButtonStyle"
+        BasedOn="{StaticResource ToolbarButtonStyle}"
+        TargetType="Button">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+
     <!-- Icône seule : un rectangle arrondi un peu plus large que haut, le texte est dans l'infobulle. -->
     <Style
         x:Key="ToolbarIconButtonStyle"
-        BasedOn="{StaticResource ToolbarButtonStyle}"
+        BasedOn="{StaticResource ToolbarFlatButtonStyle}"
         TargetType="Button">
         <Setter Property="Width" Value="40" />
         <Setter Property="Padding" Value="0" />
-    </Style>
-
-    <Style
-        x:Key="ToolbarToggleButtonStyle"
-        BasedOn="{StaticResource DefaultToggleButtonStyle}"
-        TargetType="ToggleButton">
-        <Setter Property="Height" Value="{StaticResource ToolbarControlHeight}" />
-        <Setter Property="Padding" Value="12,0" />
-        <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
 
     <!--
@@ -127,24 +200,8 @@
         <Setter Property="Fill" Value="{ThemeResource DividerStrokeColorDefaultBrush}" />
     </Style>
 
-    <Style x:Key="ToolbarGroupStyle" TargetType="StackPanel">
-        <Setter Property="Orientation" Value="Horizontal" />
-        <Setter Property="Spacing" Value="6" />
-        <Setter Property="Margin" Value="2,0" />
-        <Setter Property="VerticalAlignment" Value="Center" />
-    </Style>
-
-    <Style
-        x:Key="ToolbarTextStyle"
-        BasedOn="{StaticResource BodyTextBlockStyle}"
-        TargetType="TextBlock">
-        <Setter Property="VerticalAlignment" Value="Center" />
-        <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
-        <Setter Property="MinWidth" Value="32" />
-    </Style>
-
     <Style x:Key="PageNumberBoxStyle" TargetType="NumberBox">
-        <Setter Property="Width" Value="72" />
+        <Setter Property="Width" Value="64" />
         <Setter Property="Minimum" Value="1" />
         <Setter Property="SpinButtonPlacementMode" Value="Hidden" />
         <Setter Property="VerticalAlignment" Value="Center" />
@@ -153,7 +210,8 @@
     <!-- Sans BasedOn : le style par défaut de DropDownButton n'est pas accessible par sa clé depuis l'application. -->
     <Style x:Key="ZoomButtonStyle" TargetType="DropDownButton">
         <Setter Property="MinWidth" Value="84" />
-        <Setter Property="Height" Value="{StaticResource ToolbarControlHeight}" />
+        <Setter Property="Height" Value="28" />
+        <Setter Property="Padding" Value="8,0" />
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
 
@@ -178,9 +236,95 @@
         <Setter Property="Margin" Value="12,0,12,2" />
     </Style>
 
-    <!-- Volet des vignettes, posé sur le Mica. -->
+    <!-- ===== Rail et volets ===== -->
+
+    <!-- Rail : une colonne d'icônes ; une tabulation pour y entrer, puis les flèches. -->
+    <Style x:Key="RailStyle" TargetType="StackPanel">
+        <Setter Property="Width" Value="48" />
+        <Setter Property="Padding" Value="0,4,0,0" />
+        <Setter Property="Spacing" Value="4" />
+        <Setter Property="XYFocusKeyboardNavigation" Value="Enabled" />
+        <Setter Property="TabFocusNavigation" Value="Once" />
+    </Style>
+
+    <Style
+        x:Key="RailButtonStyle"
+        BasedOn="{StaticResource DefaultToggleButtonStyle}"
+        TargetType="ToggleButton">
+        <Setter Property="Width" Value="40" />
+        <Setter Property="Height" Value="36" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+
+    <Style x:Key="RailIconStyle" TargetType="FontIcon">
+        <Setter Property="FontSize" Value="16" />
+    </Style>
+
+    <Style x:Key="SidePanelStyle" TargetType="Grid">
+        <Setter Property="Width" Value="240" />
+        <Setter Property="BorderBrush" Value="{ThemeResource DividerStrokeColorDefaultBrush}" />
+        <Setter Property="BorderThickness" Value="1,0,0,0" />
+    </Style>
+
+    <Style
+        x:Key="PanelTitleStyle"
+        BasedOn="{StaticResource BodyStrongTextBlockStyle}"
+        TargetType="TextBlock">
+        <Setter Property="Margin" Value="16,10,16,8" />
+    </Style>
+
+    <Style
+        x:Key="PanelHintStyle"
+        BasedOn="{StaticResource BodyTextBlockStyle}"
+        TargetType="TextBlock">
+        <Setter Property="Margin" Value="16,0,16,0" />
+        <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+
+    <Style x:Key="PanelToolbarStyle" TargetType="Grid">
+        <Setter Property="Margin" Value="16,0,8,4" />
+        <Setter Property="ColumnSpacing" Value="2" />
+    </Style>
+
+    <Style
+        x:Key="PanelStatusStyle"
+        BasedOn="{StaticResource CaptionTextBlockStyle}"
+        TargetType="TextBlock">
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+
+    <Style
+        x:Key="PanelIconButtonStyle"
+        BasedOn="{StaticResource ToolbarFlatButtonStyle}"
+        TargetType="Button">
+        <Setter Property="Width" Value="32" />
+        <Setter Property="Padding" Value="0" />
+    </Style>
+
+    <Style x:Key="PanelIconStyle" TargetType="FontIcon">
+        <Setter Property="FontSize" Value="12" />
+    </Style>
+
+    <Style x:Key="PanelScrollerStyle" TargetType="ScrollViewer">
+        <Setter Property="HorizontalScrollMode" Value="Disabled" />
+        <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
+    </Style>
+
+    <Style
+        x:Key="PanelButtonStyle"
+        BasedOn="{StaticResource DefaultButtonStyle}"
+        TargetType="Button">
+        <Setter Property="HorizontalAlignment" Value="Left" />
+    </Style>
+
+    <!-- Vignettes des pages. -->
     <Style x:Key="ThumbnailsListStyle" TargetType="ListView">
-        <Setter Property="Width" Value="168" />
         <Setter Property="Padding" Value="8,0,8,12" />
         <Setter Property="SelectionMode" Value="Extended" />
     </Style>
@@ -204,6 +348,142 @@
         TargetType="TextBlock">
         <Setter Property="HorizontalAlignment" Value="Center" />
         <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+    </Style>
+
+    <!-- Plan : arbre des signets, sans réorganisation (il n'est pas modifiable ici). -->
+    <Style x:Key="OutlineTreeStyle" TargetType="TreeView">
+        <Setter Property="Padding" Value="4,0,4,12" />
+        <Setter Property="SelectionMode" Value="Single" />
+        <Setter Property="CanDragItems" Value="False" />
+        <Setter Property="CanReorderItems" Value="False" />
+        <Setter Property="AllowDrop" Value="False" />
+    </Style>
+
+    <Style x:Key="OutlineItemStyle" TargetType="Grid">
+        <Setter Property="ColumnSpacing" Value="8" />
+    </Style>
+
+    <Style x:Key="OutlineTitleStyle" TargetType="TextBlock">
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+
+    <Style
+        x:Key="OutlinePageStyle"
+        BasedOn="{StaticResource CaptionTextBlockStyle}"
+        TargetType="TextBlock">
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+    </Style>
+
+    <!-- Recherche : une occurrence par ligne, page puis extrait (le texte trouvé en gras). -->
+    <Style x:Key="SearchResultsListStyle" TargetType="ListView">
+        <Setter Property="Padding" Value="4,0,4,12" />
+        <Setter Property="SelectionMode" Value="Single" />
+    </Style>
+
+    <Style x:Key="SearchResultStyle" TargetType="StackPanel">
+        <Setter Property="Padding" Value="0,6,0,6" />
+        <Setter Property="Spacing" Value="2" />
+    </Style>
+
+    <Style
+        x:Key="SearchResultPageStyle"
+        BasedOn="{StaticResource CaptionTextBlockStyle}"
+        TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+    </Style>
+
+    <Style
+        x:Key="SearchResultTextStyle"
+        BasedOn="{StaticResource BodyTextBlockStyle}"
+        TargetType="TextBlock">
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="MaxLines" Value="3" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+
+    <!-- Propriétés : libellé discret au-dessus de la valeur, valeur sélectionnable (chemin à copier). -->
+    <x:Double x:Key="PropertySpacing">12</x:Double>
+
+    <Style x:Key="PropertiesPanelStyle" TargetType="StackPanel">
+        <Setter Property="Padding" Value="16,0,16,16" />
+        <Setter Property="Spacing" Value="20" />
+    </Style>
+
+    <Style x:Key="PropertyItemStyle" TargetType="StackPanel">
+        <Setter Property="Spacing" Value="2" />
+    </Style>
+
+    <Style
+        x:Key="PropertyLabelStyle"
+        BasedOn="{StaticResource CaptionTextBlockStyle}"
+        TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+    </Style>
+
+    <Style
+        x:Key="PropertyValueStyle"
+        BasedOn="{StaticResource BodyTextBlockStyle}"
+        TargetType="TextBlock">
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="IsTextSelectionEnabled" Value="True" />
+    </Style>
+
+    <!-- ===== Barre d'état : page, état du document, zoom ===== -->
+
+    <Style x:Key="StatusBarStyle" TargetType="Grid">
+        <Setter Property="Padding" Value="8,2,8,2" />
+        <Setter Property="MinHeight" Value="36" />
+        <Setter Property="ColumnSpacing" Value="8" />
+        <Setter Property="BorderBrush" Value="{ThemeResource DividerStrokeColorDefaultBrush}" />
+        <Setter Property="BorderThickness" Value="0,1,0,0" />
+    </Style>
+
+    <Style x:Key="StatusGroupStyle" TargetType="StackPanel">
+        <Setter Property="Orientation" Value="Horizontal" />
+        <Setter Property="Spacing" Value="6" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style
+        x:Key="StatusIconButtonStyle"
+        BasedOn="{StaticResource ToolbarFlatButtonStyle}"
+        TargetType="Button">
+        <Setter Property="Width" Value="32" />
+        <Setter Property="Height" Value="28" />
+        <Setter Property="Padding" Value="0" />
+    </Style>
+
+    <Style x:Key="StatusIconStyle" TargetType="FontIcon">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style
+        x:Key="StatusTextStyle"
+        BasedOn="{StaticResource CaptionTextBlockStyle}"
+        TargetType="TextBlock">
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+    </Style>
+
+    <Style x:Key="StatusSeparatorStyle" TargetType="Rectangle">
+        <Setter Property="Width" Value="1" />
+        <Setter Property="Height" Value="14" />
+        <Setter Property="Margin" Value="4,0,6,0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Fill" Value="{ThemeResource DividerStrokeColorDefaultBrush}" />
+    </Style>
+
+    <!-- Curseur du zoom : 10 % à 500 %, comme les limites du zoom. -->
+    <Style x:Key="ZoomSliderStyle" TargetType="Slider">
+        <Setter Property="Width" Value="120" />
+        <Setter Property="Minimum" Value="10" />
+        <Setter Property="Maximum" Value="500" />
+        <!-- Pas de 1 % : la valeur posée par le zoom (« ajuster à la largeur ») n'est jamais arrondie par le curseur. -->
+        <Setter Property="StepFrequency" Value="1" />
+        <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
 
     <!-- Zone de lecture : surface détachée du Mica, coin supérieur gauche arrondi (comme le contenu d'une page Windows 11). -->
@@ -279,25 +559,12 @@
         <Setter Property="Margin" Value="0,8,0,0" />
     </Style>
 
-    <!-- Barre de titre personnalisée. -->
-    <Style x:Key="TitleBarPanelStyle" TargetType="StackPanel">
-        <Setter Property="Margin" Value="16,0,0,0" />
-        <Setter Property="VerticalAlignment" Value="Center" />
-        <Setter Property="Orientation" Value="Horizontal" />
-        <Setter Property="Spacing" Value="12" />
-    </Style>
-
+    <!-- Icône de l'application, à gauche des onglets. -->
     <Style x:Key="TitleBarIconStyle" TargetType="Image">
         <Setter Property="Width" Value="18" />
         <Setter Property="Height" Value="18" />
-    </Style>
-
-    <Style
-        x:Key="TitleBarTextStyle"
-        BasedOn="{StaticResource CaptionTextBlockStyle}"
-        TargetType="TextBlock">
+        <Setter Property="Margin" Value="14,0,6,0" />
         <Setter Property="VerticalAlignment" Value="Center" />
-        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
     </Style>
 
     <!-- Formulaires des boîtes de dialogue. -->

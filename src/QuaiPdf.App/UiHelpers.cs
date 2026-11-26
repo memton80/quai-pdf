@@ -20,8 +20,15 @@ public static class UiHelpers
     /// <summary>Plus grand numéro de page saisissable : jamais 0, sinon la case ramènerait la page affichée à 0.</summary>
     public static double PageMaximum(int count) => Math.Max(1, count);
 
-    /// <summary>« / 12 » à côté du numéro de page.</summary>
-    public static string PageCountText(int count) => Loc.Format("Toolbar_PageCount", count);
+    /// <summary>« sur 12 » à côté du numéro de page (barre d'état).</summary>
+    public static string PageCountText(int count) => Loc.Format("Status_PageCount", count);
+
+    /// <summary>Zoom en pourcentage, pour le curseur de la barre d'état (1,5 → 150).</summary>
+    public static double ZoomPercent(double zoom) => Math.Round(zoom * 100);
+
+    /// <summary>Résumé de la recherche, ou, avant toute recherche, comment chercher.</summary>
+    public static string SearchStatusOrHint(string status) =>
+        string.IsNullOrEmpty(status) ? Loc.Get("Search_Hint") : status;
 
     /// <summary>Nom d'accessibilité d'une page (« Page 3 »).</summary>
     public static string PageName(int number) => Loc.Format("Page_Name", number);

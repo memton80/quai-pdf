@@ -5,26 +5,62 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:l="using:QuaiPdf.App.Localization"
     xmlns:ui="using:QuaiPdf.App"
-    xmlns:views="using:QuaiPdf.App.Views">
+    xmlns:vm="using:QuaiPdf.Core.ViewModels">
 
     <Window.SystemBackdrop>
         <MicaBackdrop />
     </Window.SystemBackdrop>
 
-    <Grid x:Name="RootGrid">
+    <Grid
+        x:Name="RootGrid"
+        AllowDrop="True"
+        DragOver="OnDragOver"
+        Drop="OnDrop">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- Barre de titre personnalisée (zone de glissement de la fenêtre). -->
-        <Grid x:Name="AppTitleBar" Height="48">
-            <StackPanel Style="{StaticResource TitleBarPanelStyle}">
+        <!--
+            Onglets dans la barre de titre (comme le Bloc-notes et l'Explorateur de Windows 11) : un document par
+            onglet. Seule la bande des onglets est ici ; le contenu de chaque onglet (DocumentView) est en dessous,
+            gardé en mémoire tant que l'onglet est ouvert. Le pied de la bande sert à déplacer la fenêtre.
+        -->
+        <TabView
+            x:Name="Tabs"
+            AddTabButtonClick="OnAddTabButtonClick"
+            AutomationProperties.Name="{l:Str Key=Tabs_Name}"
+            SelectionChanged="OnTabsSelectionChanged"
+            Style="{StaticResource DocumentTabsStyle}"
+            TabCloseRequested="OnTabCloseRequested"
+            TabItemsSource="{x:Bind Workspace.Documents}">
+            <TabView.TabStripHeader>
                 <Image Source="ms-appx:///Assets/AppIcon.png" Style="{StaticResource TitleBarIconStyle}" />
-                <TextBlock Style="{StaticResource TitleBarTextStyle}" Text="{x:Bind Document.WindowTitle, Mode=OneWay}" />
-            </StackPanel>
-        </Grid>
+            </TabView.TabStripHeader>
+            <TabView.TabStripFooter>
+                <Grid x:Name="DragRegion" Style="{StaticResource TitleBarDragRegionStyle}" />
+            </TabView.TabStripFooter>
+            <TabView.TabItemTemplate>
+                <DataTemplate x:DataType="vm:DocumentViewModel">
+                    <TabViewItem
+                        AutomationProperties.Name="{x:Bind TabTitle, Mode=OneWay}"
+                        Style="{StaticResource DocumentTabStyle}"
+                        ToolTipService.ToolTip="{x:Bind TabToolTip, Mode=OneWay}">
+                        <TabViewItem.IconSource>
+                            <FontIconSource Glyph="&#xE8A5;" />
+                        </TabViewItem.IconSource>
+                        <TabViewItem.Header>
+                            <StackPanel Style="{StaticResource TabHeaderStyle}">
+                                <TextBlock Style="{StaticResource TabTitleStyle}" Text="{x:Bind TabTitle, Mode=OneWay}" />
+                                <!-- Point : modifications non enregistrées. -->
+                                <Ellipse Style="{StaticResource TabModifiedDotStyle}" Visibility="{x:Bind ui:UiHelpers.VisibleIf(IsModified), Mode=OneWay}" />
+                            </StackPanel>
+                        </TabViewItem.Header>
+                    </TabViewItem>
+                </DataTemplate>
+            </TabView.TabItemTemplate>
+        </TabView>
 
         <!--
             Nouvelle version publiée sur GitHub (repris de Quai) : téléchargement, vérification, installation et
@@ -52,6 +88,7 @@
                 Value="{x:Bind Updates.Progress, Mode=OneWay}" />
         </InfoBar>
 
-        <views:DocumentView x:Name="DocumentHost" Grid.Row="2" />
+        <!-- Une vue par onglet ; seule celle de l'onglet sélectionné est visible. -->
+        <Grid x:Name="DocumentsHost" Grid.Row="2" />
     </Grid>
 </Window>

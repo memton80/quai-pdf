@@ -1,4 +1,4 @@
-using System.Windows.Input;
+using System.ComponentModel;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml;
@@ -10,10 +10,10 @@ using Microsoft.UI.Xaml.Input;
 using Rectangle = Microsoft.UI.Xaml.Shapes.Rectangle;
 using QuaiPdf.App.Localization;
 using QuaiPdf.App.Services;
+using QuaiPdf.Core.Models;
 using QuaiPdf.Core.Pdf.Text;
 using QuaiPdf.Core.ViewModels;
 using Windows.ApplicationModel.DataTransfer;
-using Windows.Storage;
 using Windows.System;
 using DispatcherQueuePriority = Microsoft.UI.Dispatching.DispatcherQueuePriority;
 using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
@@ -21,11 +21,14 @@ using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
 namespace QuaiPdf.App.Views;
 
 /// <summary>
-/// Lecture et modification du document : barre d'outils, vignettes (sélection, glisser-déposer pour réordonner)
-/// et pages. Les images des pages sont dessinées à la demande, seulement pour les pages à l'écran.
+/// Un onglet : barre de commandes, rail et volets (vignettes, plan, recherche, propriétés), pages et barre d'état.
+/// Les images des pages sont dessinées à la demande, seulement pour les pages à l'écran.
 /// </summary>
 public sealed partial class DocumentView : UserControl
 {
+    // Hauteur de l'écran au-dessus d'une occurrence montrée (elle n'arrive pas collée au bord).
+    private const double RevealRatio = 0.3;
+
     // Délai avant de redessiner les pages après un changement de zoom (le zoom au clavier ou à la molette se répète).
     private static readonly TimeSpan ZoomRenderDelay = TimeSpan.FromMilliseconds(150);
 
@@ -55,10 +58,23 @@ public sealed partial class DocumentView : UserControl
     // Défilement automatique quand le glisser sort de la zone de lecture (pixels par mouvement de souris).
     private const double DragScrollStep = 24;
 
+    // Volet choisi dans le rail (sa visibilité est le réglage commun ShowThumbnails).
+    private SidePanel _panel;
+
+    // Dernière recherche lancée : Entrée de nouveau sur le même texte passe au résultat suivant.
+    private string? _lastSearch;
+
+    /// <summary>Vue de l'onglet affiché (nécessaire au compilateur XAML ; la fenêtre passe toujours le document).</summary>
     public DocumentView()
+        : this(App.Current.Services.GetRequiredService<WorkspaceViewModel>().Selected)
+    {
+    }
+
+    public DocumentView(DocumentViewModel viewModel)
     {
         var services = App.Current.Services;
-        ViewModel = services.GetRequiredService<DocumentViewModel>();
+        ViewModel = viewModel;
+        Workspace = services.GetRequiredService<WorkspaceViewModel>();
         Settings = services.GetRequiredService<SettingsViewModel>();
         Dialogs = services.GetRequiredService<DialogService>();
         _logger = services.GetRequiredService<ILogger<DocumentView>>();
@@ -71,24 +87,53 @@ public sealed partial class DocumentView : UserControl
 
         ViewModel.ContentChanged += OnContentChanged;
         ViewModel.ScrollRequested += (_, index) => ScrollToPage(index);
+        ViewModel.RevealRequested += (_, e) => RevealArea(e.Page, e.Area);
         ViewModel.SelectionFollowedPage += (_, _) => OnSelectionFollowedPage();
         ViewModel.TextSelectionChanged += (_, _) => DrawVisibleSelections();
-        ViewModel.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName == nameof(DocumentViewModel.Zoom))
-            {
-                OnZoomChanged();
-            }
-        };
+        ViewModel.PropertyChanged += OnViewModelPropertyChanged;
+        Settings.PropertyChanged += OnSettingsPropertyChanged;
 
         Scroller.SizeChanged += (_, e) => ViewModel.ViewportWidth = e.NewSize.Width;
         Scroller.AddHandler(PointerWheelChangedEvent, new PointerEventHandler(OnScrollerPointerWheelChanged), handledEventsToo: true);
-        AddShortcuts();
+        ShowPanel(Settings.SidePanel);
     }
 
     public DocumentViewModel ViewModel { get; }
 
+    public WorkspaceViewModel Workspace { get; }
+
     public SettingsViewModel Settings { get; }
+
+    /// <summary>Volet choisi dans le rail (test de fumée).</summary>
+    internal SidePanel ActivePanel => _panel;
+
+    /// <summary>Entrées du plan affichées (test de fumée).</summary>
+    internal int OutlineItemCount => (OutlineTree.ItemsSource as IReadOnlyCollection<OutlineItemViewModel>)?.Count ?? 0;
+
+    /// <summary>Vue retirée de la fenêtre (onglet fermé) : elle ne suit plus les réglages communs.</summary>
+    public void Detach()
+    {
+        Settings.PropertyChanged -= OnSettingsPropertyChanged;
+        ViewModel.PropertyChanged -= OnViewModelPropertyChanged;
+        _zoomTimer.Stop();
+    }
+
+    /// <summary>Ctrl+F : le curseur va dans le champ de recherche.</summary>
+    public void FocusSearch()
+    {
+        if (ViewModel.HasDocument)
+        {
+            SearchBox.Focus(FocusState.Keyboard);
+        }
+    }
+
+    /// <summary>Ouvre un volet (rail, Ctrl+F, test de fumée).</summary>
+    public void OpenPanel(SidePanel panel)
+    {
+        Settings.SidePanel = panel;
+        Settings.ShowThumbnails = true;
+        ShowPanel(panel);
+    }
 
     private DialogService Dialogs { get; }
 
@@ -111,41 +156,24 @@ public sealed partial class DocumentView : UserControl
     /// <summary>Fait défiler la lecture tout en bas, comme l'utilisateur (test de fumée).</summary>
     internal void ScrollReaderToEnd() => Scroller.ChangeView(null, Scroller.ScrollableHeight, null, disableAnimation: true);
 
-    /// <summary>Raccourcis de Windows (Ctrl+O, Ctrl+S…), actifs même quand le bouton est dans le menu « … ».</summary>
-    private void AddShortcuts()
+    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        Add(VirtualKey.O, VirtualKeyModifiers.Control, ViewModel.OpenCommand);
-        Add(VirtualKey.S, VirtualKeyModifiers.Control, ViewModel.SaveCommand);
-        Add(VirtualKey.S, VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift, ViewModel.SaveAsCommand);
-        Add(VirtualKey.W, VirtualKeyModifiers.Control, ViewModel.CloseDocumentCommand);
-        Add(VirtualKey.Z, VirtualKeyModifiers.Control, ViewModel.UndoCommand);
-        Add(VirtualKey.Y, VirtualKeyModifiers.Control, ViewModel.RedoCommand);
-        Add(VirtualKey.R, VirtualKeyModifiers.Control, ViewModel.RotateRightCommand);
-        Add(VirtualKey.R, VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift, ViewModel.RotateLeftCommand);
-        Add(VirtualKey.I, VirtualKeyModifiers.Control, ViewModel.InsertCommand);
-        Add(VirtualKey.E, VirtualKeyModifiers.Control, ViewModel.ExtractCommand);
-        Add(VirtualKey.D, VirtualKeyModifiers.Control, ViewModel.EditPropertiesCommand);
-        Add((VirtualKey)0xBB, VirtualKeyModifiers.Control, ViewModel.ZoomInCommand); // « = / + » du clavier principal
-        Add(VirtualKey.Add, VirtualKeyModifiers.Control, ViewModel.ZoomInCommand);
-        Add((VirtualKey)0xBD, VirtualKeyModifiers.Control, ViewModel.ZoomOutCommand); // « - » du clavier principal
-        Add(VirtualKey.Subtract, VirtualKeyModifiers.Control, ViewModel.ZoomOutCommand);
-        Add(VirtualKey.Number0, VirtualKeyModifiers.Control, ViewModel.ActualSizeCommand);
-        Add(VirtualKey.NumberPad0, VirtualKeyModifiers.Control, ViewModel.ActualSizeCommand);
-        Add(VirtualKey.C, VirtualKeyModifiers.Control, ViewModel.CopyTextCommand);
-        Add(VirtualKey.A, VirtualKeyModifiers.Control, ViewModel.SelectAllTextCommand);
-
-        void Add(VirtualKey key, VirtualKeyModifiers modifiers, ICommand command)
+        switch (e.PropertyName)
         {
-            var accelerator = new KeyboardAccelerator { Key = key, Modifiers = modifiers };
-            accelerator.Invoked += (_, args) =>
-            {
-                args.Handled = true;
-                if (command.CanExecute(null))
-                {
-                    command.Execute(null);
-                }
-            };
-            KeyboardAccelerators.Add(accelerator);
+            case nameof(DocumentViewModel.Zoom):
+                OnZoomChanged();
+                break;
+            case nameof(DocumentViewModel.CurrentSearchResult):
+                SyncSearchResult();
+                break;
+        }
+    }
+
+    private void OnSettingsPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(SettingsViewModel.ShowThumbnails))
+        {
+            UpdateRail();
         }
     }
 
@@ -168,6 +196,7 @@ public sealed partial class DocumentView : UserControl
         SelectThumbnails(e.Selection);
         RenderVisiblePages();
         RenderVisibleThumbnails();
+        RefreshPanel();
 
         if (e.ScrollTo is { } page)
         {
@@ -704,37 +733,199 @@ public sealed partial class DocumentView : UserControl
         }
     }
 
-    // ----- Fichiers déposés depuis l'Explorateur -----
+    // ----- Rail et volets -----
 
-    private void OnDragOver(object sender, DragEventArgs e)
+    private void OnRailClick(object sender, RoutedEventArgs e)
     {
-        if (e.DataView.Contains(StandardDataFormats.StorageItems))
-        {
-            e.AcceptedOperation = DataPackageOperation.Copy;
-            e.DragUIOverride.Caption = Loc.Get("Drop_Open");
-        }
-    }
-
-    private async void OnDrop(object sender, DragEventArgs e)
-    {
-        if (!e.DataView.Contains(StandardDataFormats.StorageItems))
+        if ((sender as FrameworkElement)?.Tag is not string tag || !Enum.TryParse<SidePanel>(tag, out var panel))
         {
             return;
         }
 
+        // Second clic sur le volet ouvert : il se referme (comme la barre d'activité de Visual Studio Code).
+        if (Settings.ShowThumbnails && panel == _panel)
+        {
+            Settings.ShowThumbnails = false;
+            UpdateRail();
+            return;
+        }
+
+        OpenPanel(panel);
+    }
+
+    /// <summary>Affiche le contenu du volet choisi et le remplit (plan, propriétés) si besoin.</summary>
+    private void ShowPanel(SidePanel panel)
+    {
+        _panel = Enum.IsDefined(panel) ? panel : SidePanel.Pages;
+        Thumbnails.Visibility = UiHelpers.VisibleIf(_panel == SidePanel.Pages);
+        OutlinePanel.Visibility = UiHelpers.VisibleIf(_panel == SidePanel.Outline);
+        SearchPanel.Visibility = UiHelpers.VisibleIf(_panel == SidePanel.Search);
+        PropertiesPanel.Visibility = UiHelpers.VisibleIf(_panel == SidePanel.Properties);
+        PanelTitle.Text = Loc.Get(_panel switch
+        {
+            SidePanel.Outline => "Panel_Outline",
+            SidePanel.Search => "Panel_Search",
+            SidePanel.Properties => "Panel_Properties",
+            _ => "Panel_Pages",
+        });
+        UpdateRail();
+        RefreshPanel();
+
+        if (_panel == SidePanel.Pages)
+        {
+            RenderVisibleThumbnails();
+        }
+    }
+
+    /// <summary>Bouton du rail allumé : celui du volet ouvert (aucun si le volet est fermé).</summary>
+    private void UpdateRail()
+    {
+        var open = Settings.ShowThumbnails;
+        PagesButton.IsChecked = open && _panel == SidePanel.Pages;
+        OutlineButton.IsChecked = open && _panel == SidePanel.Outline;
+        SearchButton.IsChecked = open && _panel == SidePanel.Search;
+        PropertiesButton.IsChecked = open && _panel == SidePanel.Properties;
+    }
+
+    /// <summary>Contenu du volet relu après une ouverture ou une modification (plan, propriétés).</summary>
+    private void RefreshPanel()
+    {
         try
         {
-            var items = await e.DataView.GetStorageItemsAsync();
-            var pdf = items.OfType<StorageFile>()
-                .FirstOrDefault(f => string.Equals(Path.GetExtension(f.Path), ".pdf", StringComparison.OrdinalIgnoreCase));
-            if (pdf is not null)
+            switch (_panel)
             {
-                await ViewModel.OpenFileAsync(pdf.Path);
+                case SidePanel.Outline:
+                    IReadOnlyList<OutlineItemViewModel> outline = ViewModel.HasDocument ? ViewModel.Outline : [];
+                    OutlineTree.ItemsSource = outline;
+                    NoOutlineText.Visibility = UiHelpers.VisibleIf(outline.Count == 0);
+                    break;
+                case SidePanel.Properties:
+                    _ = RefreshPropertiesAsync();
+                    break;
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Ouverture du fichier déposé impossible");
+            _logger.LogWarning(ex, "Volet {Panel} non rempli", _panel);
+        }
+    }
+
+    private async Task RefreshPropertiesAsync()
+    {
+        try
+        {
+            await ViewModel.RefreshPropertiesAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Propriétés du document non affichées");
+        }
+    }
+
+    private void OnOutlineItemInvoked(TreeView sender, TreeViewItemInvokedEventArgs args)
+    {
+        if (args.InvokedItem is OutlineItemViewModel item)
+        {
+            ViewModel.GoToOutlineItem(item);
+        }
+    }
+
+    // ----- Recherche -----
+
+    private async void OnSearchQuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
+    {
+        try
+        {
+            var query = args.QueryText.Trim();
+            OpenPanel(SidePanel.Search);
+            if (query.Length > 0 && query == _lastSearch && ViewModel.HasSearchResults)
+            {
+                ViewModel.NextSearchResultCommand.Execute(null);
+                return;
+            }
+
+            ViewModel.SearchQuery = query;
+            _lastSearch = query;
+            await ViewModel.SearchCommand.ExecuteAsync(null);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Recherche interrompue");
+        }
+    }
+
+    private void OnSearchResultClick(object sender, ItemClickEventArgs e)
+    {
+        if (e.ClickedItem is SearchResultViewModel result)
+        {
+            ViewModel.ShowSearchResult(result);
+        }
+    }
+
+    /// <summary>L'occurrence montrée est sélectionnée dans la liste des résultats, qui défile jusqu'à elle.</summary>
+    private void SyncSearchResult()
+    {
+        var current = ViewModel.CurrentSearchResult;
+        if (!ReferenceEquals(SearchResultsList.SelectedItem, current))
+        {
+            SearchResultsList.SelectedItem = current;
+        }
+
+        if (current is not null)
+        {
+            SearchResultsList.ScrollIntoView(current);
+        }
+    }
+
+    /// <summary>
+    /// Montre une zone d'une page (occurrence trouvée) au premier tiers de l'écran, horizontalement aussi quand la
+    /// page est plus large que la zone de lecture.
+    /// </summary>
+    private void RevealArea(int index, PdfRect area)
+    {
+        if (index < 0 || index >= ViewModel.Pages.Count)
+        {
+            return;
+        }
+
+        if (ViewModel.CurrentPageNumber != index + 1)
+        {
+            ViewModel.CurrentPageNumber = index + 1;
+        }
+
+        try
+        {
+            PagesRepeater.UpdateLayout();
+            var element = PagesRepeater.GetOrCreateElement(index);
+            element.UpdateLayout();
+            var origin = element.TransformToVisual(Scroller).TransformPoint(default);
+            var zoom = ViewModel.Zoom;
+            var y = Math.Clamp(
+                Scroller.VerticalOffset + origin.Y + (area.Y * zoom) - (Scroller.ViewportHeight * RevealRatio),
+                0,
+                Scroller.ScrollableHeight);
+            var x = Math.Clamp(
+                Scroller.HorizontalOffset + origin.X + (area.X * zoom) - (Scroller.ViewportWidth * RevealRatio),
+                0,
+                Scroller.ScrollableWidth);
+            _scrollTarget = y;
+            Scroller.ChangeView(x, y, null, disableAnimation: true);
+        }
+        catch (Exception ex)
+        {
+            _scrollTarget = null;
+            _logger.LogWarning(ex, "Occurrence de la page {Page} non montrée", index + 1);
+        }
+    }
+
+    // ----- Zoom (barre d'état) -----
+
+    private void OnZoomSliderValueChanged(object sender, RangeBaseValueChangedEventArgs e)
+    {
+        // La valeur suit le zoom (liaison) : seul un geste sur le curseur change le zoom.
+        if (ViewModel.HasDocument && Math.Abs((e.NewValue / 100) - ViewModel.Zoom) > 0.005)
+        {
+            ViewModel.Zoom = e.NewValue / 100;
         }
     }
 }
