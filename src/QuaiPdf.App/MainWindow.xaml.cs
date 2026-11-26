@@ -370,6 +370,17 @@ public sealed partial class MainWindow : Window
         Close();
     }
 
+    /// <summary>Fenêtre ramenée au premier plan (restaurée si elle était réduite).</summary>
+    internal void BringToFront()
+    {
+        if (AppWindow.Presenter is OverlappedPresenter { State: OverlappedPresenterState.Minimized } presenter)
+        {
+            presenter.Restore();
+        }
+
+        Activate();
+    }
+
     /// <summary>
     /// Fermeture pour installer une mise à jour : les documents ont déjà été proposés à l'enregistrement,
     /// l'installateur attend que Quai PDF se termine puis le relance.

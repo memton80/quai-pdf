@@ -67,6 +67,10 @@ public partial class App : Application
         MainWindow = new MainWindow();
         MainWindow.Activate();
 
+        // Instance unique : les PDF ouverts depuis l'Explorateur pendant que Quai PDF tourne arrivent ici.
+        var window = MainWindow;
+        SingleInstance.Listen(files => window.DispatcherQueue.TryEnqueue(() => _ = OpenReceivedAsync(window, files)));
+
         if (_smokeTestDirectory is not null)
         {
             _ = SmokeTest.RunAsync(MainWindow, Services, _logger, _smokeTestDirectory);
@@ -140,6 +144,21 @@ public partial class App : Application
             .Skip(1)
             .Where(arg => !arg.StartsWith("--", StringComparison.Ordinal) && File.Exists(arg))
             .ToList();
+
+    /// <summary>Lancement transmis par un second Quai PDF : la fenêtre passe devant et ouvre les fichiers en onglets.</summary>
+    private async Task OpenReceivedAsync(MainWindow window, IReadOnlyList<string> paths)
+    {
+        try
+        {
+            _logger.LogInformation("Lancement transmis par une autre instance : {Count} fichier(s)", paths.Count);
+            window.BringToFront();
+            await Services.GetRequiredService<WorkspaceViewModel>().OpenFilesAsync(paths);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Ouverture des fichiers transmis impossible");
+        }
+    }
 
     private async Task OpenAtStartupAsync(IReadOnlyList<string> paths)
     {

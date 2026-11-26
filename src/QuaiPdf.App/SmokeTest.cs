@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -200,6 +201,8 @@ internal static class SmokeTest
             Check(workspace.Documents.Count == 1 && !workspace.Selected.HasDocument, "le dernier onglet fermé revient à l'accueil");
             Check(window.Title == "Quai PDF", $"titre de fenêtre à l'accueil : « {window.Title} »");
             report.Add("Onglets : ouverture dans un nouvel onglet, fichier déjà ouvert retrouvé, fermeture : OK");
+
+            await SingleInstanceAsync(workspace, directory, report);
 
             report.Add("Test de fumée : OK");
             File.WriteAllLines(Path.Combine(directory, "smoke-report.txt"), report);
@@ -410,6 +413,31 @@ internal static class SmokeTest
         document.GoToPage(1);
         await WaitForAsync(() => view.ShownPageNumber == 1, "retour à la page 1");
         report.Add($"Volets : plan ({view.OutlineItemCount} entrées), recherche ({document.SearchResults.Count} résultats), propriétés ({document.Properties.Count} lignes)");
+    }
+
+    /// <summary>
+    /// Instance unique : un second lancement avec un PDF (nom avec une espace, comme depuis l'Explorateur) le transmet
+    /// à cette fenêtre, qui l'ouvre dans un onglet, et s'arrête aussitôt. Le second processus hérite du dossier de
+    /// données isolé du test, donc de sa clé d'instance.
+    /// </summary>
+    private static async Task SingleInstanceAsync(WorkspaceViewModel workspace, string directory, List<string> report)
+    {
+        var path = Path.Combine(directory, "second fichier.pdf");
+        File.WriteAllBytes(path, SampleDocument.Create());
+        var start = new ProcessStartInfo(Environment.ProcessPath ?? throw new InvalidOperationException("Chemin de Quai PDF inconnu."))
+        {
+            UseShellExecute = false,
+        };
+        start.ArgumentList.Add(path);
+        using var second = Process.Start(start) ?? throw new InvalidOperationException("Second lancement impossible.");
+
+        await WaitForAsync(
+            () => workspace.Documents.Any(d => string.Equals(d.FilePath, path, StringComparison.OrdinalIgnoreCase)),
+            "PDF passé à un second lancement, ouvert dans un onglet de cette fenêtre");
+        await WaitForAsync(() => second.HasExited, "arrêt du second lancement");
+        Check(second.ExitCode == 0, $"second lancement terminé avec le code {second.ExitCode}");
+        Check(string.Equals(workspace.Selected.FilePath, path, StringComparison.OrdinalIgnoreCase), "onglet du fichier transmis affiché");
+        report.Add($"Instance unique : « {Path.GetFileName(path)} » transmis par un second lancement, ouvert dans un onglet : OK");
     }
 
     /// <summary>
