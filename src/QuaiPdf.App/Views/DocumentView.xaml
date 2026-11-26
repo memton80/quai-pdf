@@ -36,6 +36,7 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
             <ScrollViewer Style="{StaticResource ToolbarScrollerStyle}">
@@ -240,6 +241,11 @@
                                         <FontIcon Glyph="&#xE713;" />
                                     </MenuFlyoutItem.Icon>
                                 </MenuFlyoutItem>
+                                <MenuFlyoutItem Click="OnFeedbackClick" Text="{l:Str Key=Feedback_ButtonTooltip}">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="&#xED15;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
                             </MenuFlyout>
                         </Button.Flyout>
                     </Button>
@@ -256,7 +262,18 @@
                 QueryIcon="Find"
                 QuerySubmitted="OnSearchQuerySubmitted"
                 Style="{StaticResource SearchBoxStyle}"
-                Text="{x:Bind ViewModel.SearchQuery, Mode=TwoWay}" />
+                Text="{x:Bind ViewModel.SearchQuery, Mode=TwoWay}"
+                ToolTipService.ToolTip="{l:Str Key=Search_Tooltip}" />
+
+            <!-- Idée ou bug (comme Quai) : formulaire, puis GitHub dans le navigateur. Visible aussi sur l'accueil. -->
+            <Button
+                Grid.Column="2"
+                AutomationProperties.Name="{l:Str Key=Feedback_Button}"
+                Click="OnFeedbackClick"
+                Style="{StaticResource ToolbarIconButtonStyle}"
+                ToolTipService.ToolTip="{l:Str Key=Feedback_ButtonTooltip}">
+                <FontIcon Glyph="&#xED15;" Style="{StaticResource ToolbarIconStyle}" />
+            </Button>
         </Grid>
 
         <!-- Opération en cours, puis document en lecture seule. -->

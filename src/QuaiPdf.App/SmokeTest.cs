@@ -7,6 +7,9 @@ using PdfSharp.Drawing;
 using PdfSharp.Fonts;
 using PdfSharp.Pdf;
 using QuaiPdf.App.Services;
+using QuaiPdf.App.Views;
+using QuaiPdf.Core.Feedback;
+using QuaiPdf.Core.Localization;
 using QuaiPdf.Core.Models;
 using QuaiPdf.Core.Pdf;
 using QuaiPdf.Core.Pdf.Text;
@@ -167,6 +170,8 @@ internal static class SmokeTest
             dialogs.Current?.Hide();
             await WithTimeout(settingsDialog, "fermeture des réglages");
 
+            await FeedbackAsync(services, hwnd, directory, report);
+
             settings.ThemeIndex = 2;
             await Task.Delay(1000);
             await CaptureAsync(hwnd, directory, "5-sombre.png", report);
@@ -279,6 +284,48 @@ internal static class SmokeTest
     }
 
     /// <summary>Bandeau de mise à jour : une release plus récente (fictive, sans réseau) l'affiche.</summary>
+    /// <summary>Formulaire « idée ou bug » (les deux variantes) et adresse GitHub construite ; aucun navigateur n'est ouvert.</summary>
+    private static async Task FeedbackAsync(IServiceProvider services, IntPtr hwnd, string directory, List<string> report)
+    {
+        var dialogs = services.GetRequiredService<DialogService>();
+        var strings = services.GetRequiredService<IStrings>();
+        var logs = services.GetRequiredService<AppPaths>().LogsDirectory;
+        var system = FeedbackIssue.DescribeSystem();
+
+        var idea = new FeedbackViewModel(strings, system)
+        {
+            Title = "Fusionner plusieurs PDF",
+            Description = "Réunir les factures du mois en un seul fichier.",
+            AreaIndex = 1,
+        };
+        var bug = new FeedbackViewModel(strings, system, FeedbackKind.Bug)
+        {
+            Title = "La page 3 s'affiche à l'envers",
+            Description = "Après une rotation, l'aperçu ne suit pas.",
+            Steps = "1. Ouvrir un PDF\r2. Pivoter la page 3",
+        };
+
+        foreach (var (feedback, name) in new[] { (idea, "4b-idee.png"), (bug, "4c-bug.png") })
+        {
+            var shown = dialogs.ShowFeedbackAsync(feedback, logs);
+            await WaitForAsync(() => dialogs.Current is FeedbackDialog, $"formulaire « {name} » ouvert");
+            await Task.Delay(1000);
+            await CaptureAsync(hwnd, directory, name, report);
+            dialogs.Current?.Hide();
+            Check(!await WithTimeout(shown, $"fermeture du formulaire « {name} »"), "formulaire fermé sans continuer vers GitHub");
+        }
+
+        var address = bug.BuildLink().Address.OriginalString;
+        Check(
+            address.StartsWith("https://github.com/memton80/quai-pdf/issues/new?template=bug.yml&title=", StringComparison.Ordinal)
+                && address.Contains("&etapes=1.%20Ouvrir%20un%20PDF%0A2.", StringComparison.Ordinal),
+            $"adresse GitHub inattendue pour un bug : {address}");
+        Check(
+            idea.BuildLink().Address.OriginalString.Contains("&domaine=Pages%20", StringComparison.Ordinal),
+            "partie concernée absente de l'adresse d'une idée");
+        report.Add("Formulaire « idée ou bug » : OK");
+    }
+
     private static async Task UpdateBannerAsync(MainWindow window, IServiceProvider services, IntPtr hwnd, string directory, List<string> report)
     {
         var banner = services.GetRequiredService<UpdateBannerViewModel>();

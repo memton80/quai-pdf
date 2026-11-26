@@ -1,3 +1,5 @@
+# Formulaire ouvert par le bouton « Idée ou bug » de Quai PDF : les identifiants des champs (id) sont remplis par
+# l'adresse (src/QuaiPdf.Core/ViewModels/FeedbackViewModel.cs). Ne pas les renommer sans changer l'application.
 name: Proposer une idée
 description: Une fonction qui vous manque dans Quai PDF.
 labels: ["enhancement"]
@@ -6,7 +8,7 @@ body:
     id: domaine
     attributes:
       label: Partie de Quai PDF concernée
-      placeholder: "Lecture, pages (rotation, ordre, suppression), fusion, propriétés, réglages…"
+      placeholder: "Lecture, pages (rotation, ordre, insertion, extraction), texte, zones de texte, propriétés, réglages…"
   - type: textarea
     id: description
     attributes:
@@ -14,3 +16,8 @@ body:
       description: Décrivez la situation où cette fonction vous servirait.
     validations:
       required: true
+  - type: textarea
+    id: systeme
+    attributes:
+      label: Version de Quai PDF et de Windows
+      render: text

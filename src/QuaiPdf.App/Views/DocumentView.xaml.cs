@@ -370,6 +370,19 @@ public sealed partial class DocumentView : UserControl
         }
     }
 
+    /// <summary>Bouton « Idée ou bug » : formulaire, puis page GitHub d'une nouvelle issue dans le navigateur.</summary>
+    private async void OnFeedbackClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            await App.Current.Services.GetRequiredService<FeedbackSender>().RunAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Formulaire « idée ou bug » interrompu");
+        }
+    }
+
     // ----- Pages -----
 
     private void OnPageElementPrepared(ItemsRepeater sender, ItemsRepeaterElementPreparedEventArgs args)

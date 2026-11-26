@@ -1,3 +1,5 @@
+# Formulaire ouvert par le bouton « Idée ou bug » de Quai PDF : les identifiants des champs (id) sont remplis par
+# l'adresse (src/QuaiPdf.Core/ViewModels/FeedbackViewModel.cs). Ne pas les renommer sans changer l'application.
 name: Signaler un bug
 description: Quelque chose ne marche pas comme prévu dans Quai PDF.
 labels: ["bug"]

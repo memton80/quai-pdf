@@ -76,6 +76,10 @@
         <Setter Property="ColumnSpacing" Value="12" />
     </Style>
 
+    <!--
+        Le texte indicatif d'un AutoSuggestBox passe sous la loupe s'il est trop long (il n'est ni coupé ni abrégé) :
+        il reste court (Search_Placeholder), le raccourci complet est dans l'info-bulle.
+    -->
     <Style x:Key="SearchBoxStyle" TargetType="AutoSuggestBox">
         <Setter Property="Width" Value="260" />
         <Setter Property="VerticalAlignment" Value="Center" />
@@ -662,6 +666,47 @@
         <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
         <Setter Property="TextWrapping" Value="Wrap" />
         <Setter Property="IsTextSelectionEnabled" Value="True" />
+    </Style>
+
+    <!-- Formulaire « idée ou bug » (repris de Quai). -->
+    <Style x:Key="FeedbackFormStyle" TargetType="StackPanel">
+        <Setter Property="Spacing" Value="12" />
+        <Setter Property="Width" Value="480" />
+    </Style>
+
+    <Style x:Key="FeedbackGroupStyle" TargetType="StackPanel">
+        <Setter Property="Spacing" Value="8" />
+    </Style>
+
+    <Style x:Key="FeedbackSystemStyle" TargetType="StackPanel">
+        <Setter Property="Spacing" Value="2" />
+    </Style>
+
+    <Style
+        x:Key="FeedbackAreaBoxStyle"
+        BasedOn="{StaticResource DefaultComboBoxStyle}"
+        TargetType="ComboBox">
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+    </Style>
+
+    <!-- Texte libre sur plusieurs lignes (description d'une idée, d'un bug). -->
+    <Style
+        x:Key="ProseTextBoxStyle"
+        BasedOn="{StaticResource DefaultTextBoxStyle}"
+        TargetType="TextBox">
+        <Setter Property="AcceptsReturn" Value="True" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="MinHeight" Value="96" />
+        <Setter Property="MaxHeight" Value="200" />
+        <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
+    </Style>
+
+    <!-- Version de l'application et de Windows, telle qu'elle sera jointe. -->
+    <Style
+        x:Key="CodeCaptionStyle"
+        BasedOn="{StaticResource DialogHintStyle}"
+        TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="Consolas" />
     </Style>
 
 </ResourceDictionary>

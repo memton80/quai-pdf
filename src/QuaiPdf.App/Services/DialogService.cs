@@ -103,6 +103,10 @@ internal sealed class DialogService : IDialogService
     public Task<bool> EditMetadataAsync(MetadataEditorViewModel editor) =>
         OnUiAsync(async () => await ShowAsync(new MetadataDialog(editor)) == ContentDialogResult.Primary);
 
+    /// <summary>Formulaire « idée ou bug » ; retourne vrai si l'utilisateur continue vers GitHub (formulaire valide).</summary>
+    public Task<bool> ShowFeedbackAsync(FeedbackViewModel feedback, string logsDirectory) =>
+        OnUiAsync(async () => await ShowAsync(new FeedbackDialog(feedback, logsDirectory)) == ContentDialogResult.Primary);
+
     /// <summary>Réglages (thème, vignettes, emplacement des données).</summary>
     public Task ShowSettingsAsync(SettingsViewModel settings) =>
         OnUiAsync(async () =>

@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentDialog
+    x:Class="QuaiPdf.App.Views.FeedbackDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:l="using:QuaiPdf.App.Localization"
+    xmlns:ui="using:QuaiPdf.App"
+    Title="{l:Str Key=Feedback_DialogTitle}"
+    CloseButtonText="{l:Str Key=Common_Cancel}"
+    DefaultButton="Primary"
+    PrimaryButtonClick="OnPrimaryButtonClick"
+    PrimaryButtonText="{l:Str Key=Feedback_Continue}">
+
+    <!-- Formulaire « idée ou bug » (repris de Quai) : la publication se fait ensuite sur GitHub, par l'utilisateur. -->
+    <StackPanel Style="{StaticResource FeedbackFormStyle}">
+        <InfoBar
+            IsClosable="False"
+            IsOpen="{x:Bind ViewModel.HasError, Mode=OneWay}"
+            Message="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}"
+            Severity="Error" />
+
+        <RadioButtons
+            AutomationProperties.Name="{l:Str Key=Feedback_KindName}"
+            MaxColumns="2"
+            SelectedIndex="{x:Bind ViewModel.KindIndex, Mode=TwoWay}">
+            <RadioButton Content="{l:Str Key=Feedback_KindIdea}" />
+            <RadioButton Content="{l:Str Key=Feedback_KindBug}" />
+        </RadioButtons>
+
+        <TextBox
+            x:Name="TitleBox"
+            Header="{x:Bind ViewModel.TitleHeader, Mode=OneWay}"
+            PlaceholderText="{x:Bind ViewModel.TitlePlaceholder, Mode=OneWay}"
+            MaxLength="120"
+            Text="{x:Bind ViewModel.Title, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+        <TextBox
+            Header="{x:Bind ViewModel.DescriptionHeader, Mode=OneWay}"
+            PlaceholderText="{x:Bind ViewModel.DescriptionPlaceholder, Mode=OneWay}"
+            Style="{StaticResource ProseTextBoxStyle}"
+            Text="{x:Bind ViewModel.Description, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+        <!-- Idée : partie de Quai PDF concernée. -->
+        <ComboBox
+            Header="{l:Str Key=Feedback_IdeaArea}"
+            ItemsSource="{x:Bind ViewModel.Areas}"
+            PlaceholderText="{l:Str Key=Feedback_AreaPlaceholder}"
+            SelectedIndex="{x:Bind ViewModel.AreaIndex, Mode=TwoWay}"
+            Style="{StaticResource FeedbackAreaBoxStyle}"
+            Visibility="{x:Bind ui:UiHelpers.VisibleIf(ViewModel.IsIdea), Mode=OneWay}" />
+
+        <!-- Bug : étapes pour le reproduire et journal à joindre. -->
+        <StackPanel Style="{StaticResource FeedbackGroupStyle}" Visibility="{x:Bind ui:UiHelpers.VisibleIf(ViewModel.IsBug), Mode=OneWay}">
+            <TextBox
+                Header="{l:Str Key=Feedback_BugSteps}"
+                PlaceholderText="{l:Str Key=Feedback_BugStepsPlaceholder}"
+                Style="{StaticResource ProseTextBoxStyle}"
+                Text="{x:Bind ViewModel.Steps, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+            <TextBlock Style="{StaticResource DialogHintStyle}" Text="{l:Str Key=Feedback_LogsHint}" />
+            <HyperlinkButton Click="OnOpenLogsClick" Content="{l:Str Key=Feedback_OpenLogs}" />
+        </StackPanel>
+
+        <StackPanel Style="{StaticResource FeedbackSystemStyle}">
+            <CheckBox Content="{l:Str Key=Feedback_IncludeSystem}" IsChecked="{x:Bind ViewModel.IncludeSystemInfo, Mode=TwoWay}" />
+            <TextBlock Style="{StaticResource CodeCaptionStyle}" Text="{x:Bind ViewModel.SystemInfo}" />
+        </StackPanel>
+
+        <TextBlock Style="{StaticResource DialogHintStyle}" Text="{l:Str Key=Feedback_GitHubHint}" />
+    </StackPanel>
+</ContentDialog>
