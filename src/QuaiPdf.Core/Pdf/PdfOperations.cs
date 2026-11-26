@@ -228,7 +228,7 @@ public static class PdfOperations
 
     internal static int NormalizeRotation(int degrees) => ((degrees % 360) + 360) % 360;
 
-    private static byte[] Transform(byte[] content, Action<PdfDocument> change)
+    internal static byte[] Transform(byte[] content, Action<PdfDocument> change)
     {
         using var document = Open(content, PdfDocumentOpenMode.Modify);
         change(document);

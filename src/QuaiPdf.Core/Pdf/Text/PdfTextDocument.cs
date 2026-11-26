@@ -66,7 +66,7 @@ public sealed partial class PdfTextDocument : IDisposable
             {
                 var handle = FPDF_LoadPage(_document, index);
                 var text = handle == IntPtr.Zero ? IntPtr.Zero : FPDFText_LoadPage(handle);
-                page = new PdfTextPage(this, handle, text);
+                page = new PdfTextPage(this, index, handle, text);
                 _pages[index] = page;
             }
 

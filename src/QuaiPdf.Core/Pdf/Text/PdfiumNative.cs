@@ -126,4 +126,68 @@ internal static class PdfiumNative
 
     [DllImport(Library)]
     public static extern int FPDFDest_GetDestPageIndex(IntPtr document, IntPtr dest);
+
+    // ----- Annotations, fpdf_annot.h -----
+
+    /// <summary>Sous-type <c>/FreeText</c> (<c>FPDF_ANNOT_FREETEXT</c>).</summary>
+    public const int AnnotFreeText = 3;
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct FsRectF
+    {
+        public float Left;
+        public float Top;
+        public float Right;
+        public float Bottom;
+    }
+
+    [DllImport(Library)]
+    public static extern int FPDFPage_GetAnnotCount(IntPtr page);
+
+    [DllImport(Library)]
+    public static extern IntPtr FPDFPage_GetAnnot(IntPtr page, int index);
+
+    [DllImport(Library)]
+    public static extern void FPDFPage_CloseAnnot(IntPtr annotation);
+
+    [DllImport(Library)]
+    public static extern int FPDFAnnot_GetSubtype(IntPtr annotation);
+
+    [DllImport(Library)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool FPDFAnnot_GetRect(IntPtr annotation, out FsRectF rect);
+
+    [DllImport(Library)]
+    public static extern int FPDFAnnot_GetFlags(IntPtr annotation);
+
+    [DllImport(Library)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool FPDFAnnot_HasKey(IntPtr annotation, [MarshalAs(UnmanagedType.LPUTF8Str)] string key);
+
+    /// <summary>Valeur texte en UTF-16LE, zéro final compris ; retourne la taille nécessaire en octets.</summary>
+    [DllImport(Library)]
+    public static extern CULong FPDFAnnot_GetStringValue(IntPtr annotation, [MarshalAs(UnmanagedType.LPUTF8Str)] string key, [Out] byte[]? buffer, CULong length);
+
+    // ----- Rendu (tests : vérifier qu'une apparence est dessinée au bon endroit), fpdfview.h -----
+
+    /// <summary>Dessiner aussi les annotations (<c>FPDF_ANNOT</c>).</summary>
+    public const int RenderAnnotations = 0x01;
+
+    [DllImport(Library)]
+    public static extern IntPtr FPDFBitmap_Create(int width, int height, int alpha);
+
+    [DllImport(Library)]
+    public static extern int FPDFBitmap_FillRect(IntPtr bitmap, int left, int top, int width, int height, uint color);
+
+    [DllImport(Library)]
+    public static extern void FPDF_RenderPageBitmap(IntPtr bitmap, IntPtr page, int startX, int startY, int sizeX, int sizeY, int rotate, int flags);
+
+    [DllImport(Library)]
+    public static extern IntPtr FPDFBitmap_GetBuffer(IntPtr bitmap);
+
+    [DllImport(Library)]
+    public static extern int FPDFBitmap_GetStride(IntPtr bitmap);
+
+    [DllImport(Library)]
+    public static extern void FPDFBitmap_Destroy(IntPtr bitmap);
 }

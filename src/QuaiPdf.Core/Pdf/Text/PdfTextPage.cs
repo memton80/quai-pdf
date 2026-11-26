@@ -6,7 +6,7 @@ namespace QuaiPdf.Core.Pdf.Text;
 /// Texte d'une page. Les positions sont celles de la page affichée (<see cref="PdfPoint"/> : pixels indépendants à
 /// 100 %, origine en haut à gauche, rotation comprise) ; PDFium fait la conversion depuis le repère du PDF.
 /// </summary>
-public sealed class PdfTextPage
+public sealed partial class PdfTextPage
 {
     // Unités d'« appareil » par pixel indépendant : PDFium convertit en coordonnées entières, d'où cette finesse.
     private const int Precision = 100;
@@ -21,9 +21,10 @@ public sealed class PdfTextPage
     private IntPtr _page;
     private IntPtr _text;
 
-    internal PdfTextPage(PdfTextDocument owner, IntPtr page, IntPtr text)
+    internal PdfTextPage(PdfTextDocument owner, int index, IntPtr page, IntPtr text)
     {
         _owner = owner;
+        Index = index;
         _page = page;
         _text = text;
         if (page != IntPtr.Zero)
@@ -33,6 +34,9 @@ public sealed class PdfTextPage
 
         CharCount = text == IntPtr.Zero ? 0 : Math.Max(0, FPDFText_CountChars(text));
     }
+
+    /// <summary>Place de la page dans le document (à partir de 0).</summary>
+    public int Index { get; }
 
     /// <summary>Taille de la page affichée (rotation comprise), en pixels indépendants à 100 %.</summary>
     public PdfPageSize Size { get; }
