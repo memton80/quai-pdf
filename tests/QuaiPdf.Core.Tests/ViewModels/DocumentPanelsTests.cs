@@ -125,19 +125,70 @@ public sealed class DocumentPanelsTests : IDisposable
     }
 
     [Fact]
-    public async Task Edit_ClearsSearchResults()
+    public async Task Edit_RunsTheSearchAgainWithoutMovingTheReader()
+    {
+        await OpenTextAsync();
+        _document.SearchQuery = "deux";
+        await _document.SearchCommand.ExecuteAsync(null);
+        _document.NextSearchResultCommand.Execute(null);
+        var revealed = 0;
+        _document.RevealRequested += (_, _) => revealed++;
+
+        _document.SetSelection([0]);
+        await _document.RotateRightCommand.ExecuteAsync(null);
+
+        Assert.Equal([0, 1], _document.SearchResults.Select(r => r.Page));
+        Assert.Null(_document.CurrentSearchResult);
+        Assert.Equal("Search_Count:2", _document.SearchStatus);
+        Assert.Equal(0, revealed);
+        Assert.False(_document.HasTextSelection);
+    }
+
+    [Fact]
+    public async Task DeletingAPage_UpdatesTheResults()
     {
         await OpenTextAsync();
         _document.SearchQuery = "deux";
         await _document.SearchCommand.ExecuteAsync(null);
 
+        _document.SetSelection([1]);
+        await _document.DeleteCommand.ExecuteAsync(null);
+
+        Assert.Equal([0], _document.SearchResults.Select(r => r.Page));
+        Assert.Equal("Search_One", _document.SearchStatus);
+
+        await _document.UndoCommand.ExecuteAsync(null);
+
+        Assert.Equal([0, 1], _document.SearchResults.Select(r => r.Page));
+    }
+
+    [Fact]
+    public async Task SearchedQuery_IsTheOneRunAgain_NotTheTextBeingTyped()
+    {
+        await OpenTextAsync();
+        _document.SearchQuery = "monde";
+        await _document.SearchCommand.ExecuteAsync(null);
+        _document.SearchQuery = "deu";
+
+        _document.SetSelection([0]);
+        await _document.RotateRightCommand.ExecuteAsync(null);
+
+        Assert.Equal("monde", Assert.Single(_document.SearchResults).Text);
+    }
+
+    [Fact]
+    public async Task OtherDocument_ForgetsTheSearch()
+    {
+        await OpenTextAsync();
+        _document.SearchQuery = "deux";
+        await _document.SearchCommand.ExecuteAsync(null);
+
+        await OpenAsync("autre.pdf", SamplePdf.CreateWithText(pages: [["Deux fois deux"]]));
         _document.SetSelection([0]);
         await _document.RotateRightCommand.ExecuteAsync(null);
 
         Assert.Empty(_document.SearchResults);
-        Assert.Null(_document.CurrentSearchResult);
         Assert.Equal(string.Empty, _document.SearchStatus);
-        Assert.Equal("deux", _document.SearchQuery);
     }
 
     [Fact]

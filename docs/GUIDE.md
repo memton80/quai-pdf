@@ -49,7 +49,7 @@ Tapez un mot ou une expression dans le champ **Rechercher**, en haut à droite (
 | Résultat suivant | `F3`, ou `Entrée` de nouveau dans le champ |
 | Résultat précédent | `Maj+F3` |
 
-Une page scannée (une simple image) n'a pas de texte : la recherche ne la voit pas. Après une modification, relancez la recherche.
+Une page scannée (une simple image) n'a pas de texte : la recherche ne la voit pas. Après une modification (pages pivotées, supprimées, déplacées…), la recherche est relancée d'elle-même.
 
 ## Sélectionner et copier du texte
 

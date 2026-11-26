@@ -84,6 +84,9 @@ public sealed partial class DocumentViewModel
 
     private IReadOnlyList<OutlineItemViewModel>? _outline;
 
+    // Dernière recherche lancée : relancée d'elle-même après une modification (les positions trouvées changent).
+    private string? _searchedQuery;
+
     /// <summary>Une occurrence trouvée est à montrer à l'écran.</summary>
     public event EventHandler<RevealRequestedEventArgs>? RevealRequested;
 
@@ -166,14 +169,24 @@ public sealed partial class DocumentViewModel
     }
 
     [RelayCommand(CanExecute = nameof(HasDocument))]
-    private async Task SearchAsync()
+    private Task SearchAsync() => RunSearchAsync(SearchQuery.Trim(), showFirst: true);
+
+    /// <summary>
+    /// Après une modification (ou une annulation) : la dernière recherche est relancée sur le nouveau contenu, sans
+    /// déplacer la lecture ni changer la sélection.
+    /// </summary>
+    private Task RefreshSearchAsync() =>
+        _searchedQuery is { Length: > 0 } query && HasDocument ? RunSearchAsync(query, showFirst: false) : Task.CompletedTask;
+
+    private async Task RunSearchAsync(string query, bool showFirst)
     {
         ClearSearchResults();
-        var query = SearchQuery.Trim();
         if (query.Length == 0 || IsBusy)
         {
             return;
         }
+
+        _searchedQuery = query;
 
         if (Text is not { } text)
         {
@@ -211,7 +224,7 @@ public sealed partial class DocumentViewModel
             RefreshSearchCommands();
         }
 
-        if (SearchResults.Count > 0)
+        if (showFirst && SearchResults.Count > 0)
         {
             ShowSearchResult(SearchResults[0]);
         }
@@ -342,4 +355,7 @@ public sealed partial class DocumentViewModel
         _outline = null;
         ClearSearchResults();
     }
+
+    /// <summary>Autre document (ou aucun) : la recherche précédente ne le concerne pas.</summary>
+    private void ForgetSearch() => _searchedQuery = null;
 }

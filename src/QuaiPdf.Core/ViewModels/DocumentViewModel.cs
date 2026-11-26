@@ -644,6 +644,7 @@ public sealed partial class DocumentViewModel : ObservableObject, IDisposable
             return false;
         }
 
+        var applied = false;
         IsBusy = true;
         try
         {
@@ -652,18 +653,24 @@ public sealed partial class DocumentViewModel : ObservableObject, IDisposable
             var selection = selectionAfter(rendered.Pages.Count);
             _history.Record(before);
             Show(after, rendered, selection, scrollToSelection && selection.Count > 0 ? selection[0] : null);
-            return true;
+            applied = true;
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
             await ReportAsync("Error_EditTitle", ex);
-            return false;
         }
         finally
         {
             IsBusy = false;
             RefreshCommands();
         }
+
+        if (applied)
+        {
+            await RefreshSearchAsync();
+        }
+
+        return applied;
     }
 
     /// <summary>Remet les pages dans l'ordre de leur <see cref="PageItemViewModel.Index"/>.</summary>
@@ -706,12 +713,15 @@ public sealed partial class DocumentViewModel : ObservableObject, IDisposable
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
             await ReportAsync("Error_EditTitle", ex);
+            return;
         }
         finally
         {
             IsBusy = false;
             RefreshCommands();
         }
+
+        await RefreshSearchAsync();
     }
 
     /// <summary>Enregistre le contenu affiché à cet emplacement (test de fumée, sans sélecteur de fichier).</summary>
@@ -822,6 +832,7 @@ public sealed partial class DocumentViewModel : ObservableObject, IDisposable
 
     private void Reset()
     {
+        ForgetSearch();
         ResetText();
         _history.Clear();
         _fitWidthPending = false;
