@@ -363,4 +363,64 @@
   <data name="Status_Saved" xml:space="preserve">
     <value>Enregistré</value>
   </data>
+  <data name="Outline_Page" xml:space="preserve">
+    <value>p. {0}</value>
+  </data>
+  <data name="Search_Unavailable" xml:space="preserve">
+    <value>Le texte de ce document n'est pas lisible : la recherche est impossible.</value>
+  </data>
+  <data name="Search_None" xml:space="preserve">
+    <value>Aucun résultat pour « {0} ».</value>
+  </data>
+  <data name="Search_One" xml:space="preserve">
+    <value>1 résultat</value>
+  </data>
+  <data name="Search_Count" xml:space="preserve">
+    <value>{0} résultats</value>
+  </data>
+  <data name="Search_Many" xml:space="preserve">
+    <value>Plus de {0} résultats : seuls les {0} premiers sont listés.</value>
+  </data>
+  <data name="Properties_Pages" xml:space="preserve">
+    <value>Pages</value>
+  </data>
+  <data name="Properties_Size" xml:space="preserve">
+    <value>Taille</value>
+  </data>
+  <data name="Properties_File" xml:space="preserve">
+    <value>Fichier</value>
+  </data>
+  <data name="Properties_Folder" xml:space="preserve">
+    <value>Dossier</value>
+  </data>
+  <data name="Properties_Editing" xml:space="preserve">
+    <value>Modification</value>
+  </data>
+  <data name="Properties_Editable" xml:space="preserve">
+    <value>Autorisée</value>
+  </data>
+  <data name="Properties_Protected" xml:space="preserve">
+    <value>Interdite par l'auteur (lecture seule)</value>
+  </data>
+  <data name="Properties_Unsupported" xml:space="preserve">
+    <value>Impossible sans risque (lecture seule)</value>
+  </data>
+  <data name="Properties_Copy" xml:space="preserve">
+    <value>Copie du texte</value>
+  </data>
+  <data name="Properties_CopyAllowed" xml:space="preserve">
+    <value>Autorisée</value>
+  </data>
+  <data name="Properties_CopyForbidden" xml:space="preserve">
+    <value>Interdite par l'auteur</value>
+  </data>
+  <data name="Size_Bytes" xml:space="preserve">
+    <value>{0} octets</value>
+  </data>
+  <data name="Size_Kilobytes" xml:space="preserve">
+    <value>{0} Ko</value>
+  </data>
+  <data name="Size_Megabytes" xml:space="preserve">
+    <value>{0} Mo</value>
+  </data>
 </root>

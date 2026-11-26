@@ -3,8 +3,9 @@ using System.Runtime.InteropServices;
 namespace QuaiPdf.Core.Pdf.Text;
 
 /// <summary>
-/// Fonctions de PDFium utilisées par Quai PDF (API C publique, <c>fpdfview.h</c> et <c>fpdf_text.h</c>).
-/// La bibliothèque n'est pas prévue pour plusieurs fils : tout appel passe par <see cref="Gate"/>.
+/// Fonctions de PDFium utilisées par Quai PDF (API C publique, <c>fpdfview.h</c>, <c>fpdf_text.h</c> et
+/// <c>fpdf_doc.h</c>). La bibliothèque n'est pas prévue pour plusieurs fils : tout appel passe par <see cref="Gate"/>.
+/// Le type C <c>unsigned long</c> fait 32 bits sous Windows et 64 bits sous Linux : <see cref="CULong"/>.
 /// </summary>
 internal static class PdfiumNative
 {
@@ -12,6 +13,9 @@ internal static class PdfiumNative
 
     /// <summary>Erreur de <c>FPDF_GetLastError</c> : mot de passe absent ou incorrect.</summary>
     public const uint ErrorPassword = 4;
+
+    /// <summary>Action « aller à une destination du document » (<c>PDFACTION_GOTO</c>).</summary>
+    public const uint ActionGoTo = 1;
 
     /// <summary>Droit « copier ou extraire le texte » (bit 5 des permissions, ISO 32000-1, tableau 22).</summary>
     public const uint PermissionExtract = 1 << 4;
@@ -95,4 +99,31 @@ internal static class PdfiumNative
 
     [DllImport(Library)]
     public static extern int FPDFText_GetText(IntPtr textPage, int start, int count, [Out] ushort[] buffer);
+
+    // ----- Plan du document (signets), fpdf_doc.h -----
+
+    [DllImport(Library)]
+    public static extern IntPtr FPDFBookmark_GetFirstChild(IntPtr document, IntPtr bookmark);
+
+    [DllImport(Library)]
+    public static extern IntPtr FPDFBookmark_GetNextSibling(IntPtr document, IntPtr bookmark);
+
+    /// <summary>Titre en UTF-16LE, zéro final compris ; retourne la taille nécessaire en octets.</summary>
+    [DllImport(Library)]
+    public static extern CULong FPDFBookmark_GetTitle(IntPtr bookmark, [Out] byte[]? buffer, CULong length);
+
+    [DllImport(Library)]
+    public static extern IntPtr FPDFBookmark_GetDest(IntPtr document, IntPtr bookmark);
+
+    [DllImport(Library)]
+    public static extern IntPtr FPDFBookmark_GetAction(IntPtr bookmark);
+
+    [DllImport(Library)]
+    public static extern CULong FPDFAction_GetType(IntPtr action);
+
+    [DllImport(Library)]
+    public static extern IntPtr FPDFAction_GetDest(IntPtr document, IntPtr action);
+
+    [DllImport(Library)]
+    public static extern int FPDFDest_GetDestPageIndex(IntPtr document, IntPtr dest);
 }

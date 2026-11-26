@@ -7,7 +7,7 @@ namespace QuaiPdf.Core.Pdf.Text;
 /// Texte d'un contenu PDF, lu par PDFium (le moteur PDF de Chrome) : position des caractères, rectangles à surligner
 /// pour une sélection, texte d'une sélection avec ses fins de ligne. Rien n'est écrit : sert à sélectionner et copier.
 /// </summary>
-public sealed class PdfTextDocument : IDisposable
+public sealed partial class PdfTextDocument : IDisposable
 {
     private readonly Dictionary<int, PdfTextPage> _pages = [];
     private IntPtr _document;

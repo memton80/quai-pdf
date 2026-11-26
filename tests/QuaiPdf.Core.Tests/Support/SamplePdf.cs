@@ -48,6 +48,23 @@ internal static class SamplePdf
 
     public static double WidthOf(int page) => BaseWidth + (10 * page);
 
+    /// <summary>
+    /// Trois pages avec un plan : « Introduction » (page 1) et son enfant « Contexte » (page 2), puis « Conclusion »
+    /// (page 3).
+    /// </summary>
+    public static byte[] CreateWithOutline()
+    {
+        using var stream = new MemoryStream(Create(3));
+        using var document = PdfReader.Open(stream, PdfDocumentOpenMode.Modify);
+        var introduction = document.Outlines.Add("Introduction", document.Pages[0]);
+        introduction.Outlines.Add("Contexte", document.Pages[1]);
+        document.Outlines.Add("Conclusion", document.Pages[2]);
+
+        using var output = new MemoryStream();
+        document.Save(output, false);
+        return output.ToArray();
+    }
+
     /// <summary>Hauteur des pages de texte (Letter, en points).</summary>
     public const double TextPageHeight = 792;
 

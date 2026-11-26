@@ -899,6 +899,7 @@ public sealed partial class DocumentViewModel : ObservableObject, IDisposable
         NextPageCommand.NotifyCanExecuteChanged();
         CopyTextCommand.NotifyCanExecuteChanged();
         SelectAllTextCommand.NotifyCanExecuteChanged();
+        SearchCommand.NotifyCanExecuteChanged();
         RefreshTargetCommands();
     }
 }

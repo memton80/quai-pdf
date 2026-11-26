@@ -207,9 +207,13 @@ public sealed partial class DocumentViewModel
         TextSelectionChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    /// <summary>Nouveau contenu ou document fermé : texte relu à la prochaine demande, sélection effacée.</summary>
+    /// <summary>
+    /// Nouveau contenu ou document fermé : texte relu à la prochaine demande, sélection effacée, plan et recherche
+    /// oubliés.
+    /// </summary>
     private void ResetText()
     {
+        ResetPanels();
         _text?.Dispose();
         _text = null;
         _textUnavailable = false;

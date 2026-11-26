@@ -192,7 +192,7 @@ public sealed partial class WorkspaceViewModel : ObservableObject, IDisposable
 
     private bool CanCloseSelected() => Documents.Count > 1 || Selected.HasDocument;
 
-    partial void OnSelectedChanged(DocumentViewModel? oldValue, DocumentViewModel newValue)
+    partial void OnSelectedChanged(DocumentViewModel oldValue, DocumentViewModel newValue)
     {
         // Un onglet retiré n'est jamais affiché : la sélection revient à un onglet présent.
         if (!Documents.Contains(newValue) && Documents.Count > 0)
