@@ -833,6 +833,7 @@ public sealed partial class DocumentViewModel : ObservableObject, IDisposable
     private void Reset()
     {
         ForgetSearch();
+        IsTextToolActive = false;
         ResetText();
         _history.Clear();
         _fitWidthPending = false;
@@ -911,6 +912,7 @@ public sealed partial class DocumentViewModel : ObservableObject, IDisposable
         CopyTextCommand.NotifyCanExecuteChanged();
         SelectAllTextCommand.NotifyCanExecuteChanged();
         SearchCommand.NotifyCanExecuteChanged();
+        DeleteSelectedTextBoxCommand.NotifyCanExecuteChanged();
         RefreshTargetCommands();
     }
 }

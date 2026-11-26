@@ -214,6 +214,7 @@ public sealed partial class DocumentViewModel
     private void ResetText()
     {
         ResetPanels();
+        ResetTextBoxes();
         _text?.Dispose();
         _text = null;
         _textUnavailable = false;
