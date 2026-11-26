@@ -101,7 +101,7 @@ public sealed partial class DocumentViewModel : ObservableObject, IDisposable
     public IReadOnlyList<int> SelectedIndices { get; private set; } = [];
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(FileName), nameof(WindowTitle))]
+    [NotifyPropertyChangedFor(nameof(FileName), nameof(WindowTitle), nameof(TabTitle), nameof(TabToolTip))]
     public partial string? FilePath { get; private set; }
 
     public string FileName => FilePath is null ? string.Empty : Path.GetFileName(FilePath);
@@ -110,15 +110,27 @@ public sealed partial class DocumentViewModel : ObservableObject, IDisposable
         ? $"{(IsModified ? "*" : string.Empty)}{FileName} - {AppInfo.DisplayName}"
         : AppInfo.DisplayName;
 
+    /// <summary>Nom de l'onglet : le fichier, ou « Accueil » quand l'onglet n'a pas encore de document.</summary>
+    public string TabTitle => HasDocument ? FileName : _strings.Get("Tab_Home");
+
+    /// <summary>Infobulle de l'onglet : le chemin complet du fichier.</summary>
+    public string TabToolTip => FilePath ?? TabTitle;
+
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(WindowTitle), nameof(CanEdit), nameof(IsEmpty), nameof(IsReadOnly), nameof(ReadOnlyMessage))]
+    [NotifyPropertyChangedFor(nameof(WindowTitle), nameof(CanEdit), nameof(IsEmpty), nameof(IsReadOnly), nameof(ReadOnlyMessage), nameof(TabTitle), nameof(TabToolTip), nameof(StatusText))]
     public partial bool HasDocument { get; private set; }
 
     public bool IsEmpty => !HasDocument;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(WindowTitle))]
+    [NotifyPropertyChangedFor(nameof(WindowTitle), nameof(StatusText))]
     public partial bool IsModified { get; private set; }
+
+    /// <summary>État du document dans la barre d'état : lecture seule, modifié, ou tel qu'enregistré.</summary>
+    public string StatusText => !HasDocument ? string.Empty
+        : IsReadOnly ? _strings.Get("Status_ReadOnly")
+        : IsModified ? _strings.Get("Status_Modified")
+        : _strings.Get("Status_Saved");
 
     /// <summary>Opération en cours (lecture, modification, enregistrement) : les commandes attendent.</summary>
     [ObservableProperty]
@@ -126,7 +138,7 @@ public sealed partial class DocumentViewModel : ObservableObject, IDisposable
     public partial bool IsBusy { get; private set; }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CanEdit), nameof(ReadOnlyMessage), nameof(IsReadOnly))]
+    [NotifyPropertyChangedFor(nameof(CanEdit), nameof(ReadOnlyMessage), nameof(IsReadOnly), nameof(StatusText))]
     public partial PdfEditability Editability { get; private set; }
 
     public bool CanEdit => HasDocument && !IsBusy && Editability == PdfEditability.Editable;
@@ -239,21 +251,31 @@ public sealed partial class DocumentViewModel : ObservableObject, IDisposable
         };
     }
 
+    /// <summary>
+    /// Ferme le document (l'onglet reste, vide) après avoir proposé d'enregistrer les modifications.
+    /// Retourne faux si l'utilisateur annule.
+    /// </summary>
+    public async Task<bool> CloseAsync()
+    {
+        if (IsBusy || !await ConfirmCloseAsync())
+        {
+            return false;
+        }
+
+        if (HasDocument)
+        {
+            Reset();
+            _logger.LogInformation("Document fermé");
+        }
+
+        return true;
+    }
+
     public void Dispose()
     {
         ResetText();
         Rendered?.Dispose();
         Rendered = null;
-    }
-
-    [RelayCommand(CanExecute = nameof(CanRunCommand))]
-    private async Task OpenAsync()
-    {
-        var path = await _files.PickPdfToOpenAsync();
-        if (path is not null)
-        {
-            await OpenFileAsync(path);
-        }
     }
 
     [RelayCommand(CanExecute = nameof(CanSave))]
@@ -278,18 +300,6 @@ public sealed partial class DocumentViewModel : ObservableObject, IDisposable
         return CanSave() ? SaveCoreAsync()
             : IsReadOnly ? SaveAsCoreAsync()
             : Task.CompletedTask;
-    }
-
-    [RelayCommand(CanExecute = nameof(CanSaveAs))]
-    private async Task CloseDocumentAsync()
-    {
-        if (!await ConfirmCloseAsync())
-        {
-            return;
-        }
-
-        Reset();
-        _logger.LogInformation("Document fermé");
     }
 
     [RelayCommand(CanExecute = nameof(CanUndo))]
@@ -459,8 +469,6 @@ public sealed partial class DocumentViewModel : ObservableObject, IDisposable
 
     [RelayCommand(CanExecute = nameof(CanGoNext))]
     private void NextPage() => GoToPage(CurrentPageNumber + 1);
-
-    private bool CanRunCommand() => !IsBusy;
 
     private bool CanSave() => CanEdit && (IsModified || FilePath is null);
 
@@ -870,13 +878,12 @@ public sealed partial class DocumentViewModel : ObservableObject, IDisposable
     private void RefreshCommands()
     {
         OnPropertyChanged(nameof(CanEdit));
+        OnPropertyChanged(nameof(StatusText));
         OnPropertyChanged(nameof(CanUndo));
         OnPropertyChanged(nameof(CanRedo));
-        OpenCommand.NotifyCanExecuteChanged();
         SaveCommand.NotifyCanExecuteChanged();
         SaveAsCommand.NotifyCanExecuteChanged();
         SaveOrCopyCommand.NotifyCanExecuteChanged();
-        CloseDocumentCommand.NotifyCanExecuteChanged();
         UndoCommand.NotifyCanExecuteChanged();
         RedoCommand.NotifyCanExecuteChanged();
         RotateLeftCommand.NotifyCanExecuteChanged();

@@ -98,7 +98,7 @@ public sealed class FakeDialogs : IDialogService
 
 public sealed class FakeFileDialogs : IFileDialogs
 {
-    public string? OpenPath { get; set; }
+    public List<string> OpenPaths { get; } = [];
 
     public List<string> InsertPaths { get; } = [];
 
@@ -106,7 +106,7 @@ public sealed class FakeFileDialogs : IFileDialogs
 
     public string? SuggestedName { get; private set; }
 
-    public Task<string?> PickPdfToOpenAsync() => Task.FromResult(OpenPath);
+    public Task<IReadOnlyList<string>> PickPdfsToOpenAsync() => Task.FromResult<IReadOnlyList<string>>(OpenPaths.ToList());
 
     public Task<IReadOnlyList<string>> PickPdfsToInsertAsync() => Task.FromResult<IReadOnlyList<string>>(InsertPaths.ToList());
 

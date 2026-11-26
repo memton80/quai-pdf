@@ -3,8 +3,8 @@ namespace QuaiPdf.Core.Services;
 /// <summary>Sélecteurs de fichiers de Windows (implémentés par l'application).</summary>
 public interface IFileDialogs
 {
-    /// <summary>Un PDF à ouvrir ; <c>null</c> si l'utilisateur annule.</summary>
-    Task<string?> PickPdfToOpenAsync();
+    /// <summary>Un ou plusieurs PDF à ouvrir (chacun dans son onglet) ; liste vide si l'utilisateur annule.</summary>
+    Task<IReadOnlyList<string>> PickPdfsToOpenAsync();
 
     /// <summary>Un ou plusieurs PDF dont insérer les pages ; liste vide si l'utilisateur annule.</summary>
     Task<IReadOnlyList<string>> PickPdfsToInsertAsync();

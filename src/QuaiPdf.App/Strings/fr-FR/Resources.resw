@@ -351,4 +351,16 @@
   <data name="Settings_UpdatesDescription" xml:space="preserve">
     <value>Au démarrage, Quai PDF demande à GitHub le numéro de la dernière version publiée (rien sur vous ni sur vos documents).</value>
   </data>
+  <data name="Tab_Home" xml:space="preserve">
+    <value>Accueil</value>
+  </data>
+  <data name="Status_ReadOnly" xml:space="preserve">
+    <value>Lecture seule</value>
+  </data>
+  <data name="Status_Modified" xml:space="preserve">
+    <value>Modifié, pas encore enregistré</value>
+  </data>
+  <data name="Status_Saved" xml:space="preserve">
+    <value>Enregistré</value>
+  </data>
 </root>

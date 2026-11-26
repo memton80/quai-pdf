@@ -54,16 +54,6 @@ public sealed class DocumentViewModelTests : IDisposable
     }
 
     [Fact]
-    public async Task OpenCommand_UsesPicker()
-    {
-        _files.OpenPath = Write("a.pdf", SamplePdf.Create(2));
-
-        await _document.OpenCommand.ExecuteAsync(null);
-
-        Assert.Equal(_files.OpenPath, _document.FilePath);
-    }
-
-    [Fact]
     public async Task Open_UnreadableFile_ShowsErrorAndKeepsNothing()
     {
         var path = Write("faux.pdf", "pas un pdf"u8.ToArray());
@@ -444,7 +434,7 @@ public sealed class DocumentViewModelTests : IDisposable
         var rendered = _renderer.Created[^1];
         _dialogs.SaveChoice = SaveChoice.Discard;
 
-        await _document.CloseDocumentCommand.ExecuteAsync(null);
+        Assert.True(await _document.CloseAsync());
 
         Assert.False(_document.HasDocument);
         Assert.Empty(_document.Pages);
@@ -848,10 +838,37 @@ public sealed class DocumentViewModelTests : IDisposable
         await OpenTextAsync();
         _document.SelectAllTextCommand.Execute(null);
 
-        await _document.CloseDocumentCommand.ExecuteAsync(null);
+        Assert.True(await _document.CloseAsync());
 
         Assert.False(_document.HasTextSelection);
         Assert.Null(_document.TextPage(0));
+    }
+
+    [Fact]
+    public async Task StatusText_FollowsTheDocumentState()
+    {
+        Assert.Equal(string.Empty, _document.StatusText);
+
+        await OpenSampleAsync(2);
+        Assert.Equal("Status_Saved", _document.StatusText);
+
+        await _document.RotateRightCommand.ExecuteAsync(null);
+        Assert.Equal("Status_Modified", _document.StatusText);
+
+        _dialogs.SaveChoice = SaveChoice.Discard;
+        Assert.True(await _document.OpenFileAsync(Write("protege.pdf", SamplePdf.Create(1, ownerPassword: "proprio"))));
+        Assert.Equal("Status_ReadOnly", _document.StatusText);
+    }
+
+    [Fact]
+    public async Task TabTitle_IsTheFileNameWithItsPathAsToolTip()
+    {
+        Assert.Equal("Tab_Home", _document.TabTitle);
+
+        var path = await OpenSampleAsync(1);
+
+        Assert.Equal("doc.pdf", _document.TabTitle);
+        Assert.Equal(path, _document.TabToolTip);
     }
 
     private Task<bool> OpenTextAsync() =>
