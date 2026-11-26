@@ -600,6 +600,23 @@
         <Setter Property="StrokeThickness" Value="1" />
     </Style>
 
+    <!-- Couleur du surligneur : un trait large comme une pointe biseautée. -->
+    <Style x:Key="HighlightSwatchStyle" TargetType="Rectangle">
+        <Setter Property="Width" Value="18" />
+        <Setter Property="Height" Value="10" />
+        <Setter Property="RadiusX" Value="2" />
+        <Setter Property="RadiusY" Value="2" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Stroke" Value="{ThemeResource ControlStrokeColorDefaultBrush}" />
+        <Setter Property="StrokeThickness" Value="1" />
+    </Style>
+
+    <!-- Surlignage choisi (clic dessus) : contour en pointillés, comme une zone de texte sélectionnée. -->
+    <Style
+        x:Key="HighlightSelectionStyle"
+        BasedOn="{StaticResource TextBoxSelectionStyle}"
+        TargetType="Rectangle" />
+
     <!-- Une page : toujours blanche (comme le papier), quel que soit le thème. -->
     <Style x:Key="PageBorderStyle" TargetType="Border">
         <Setter Property="Background" Value="White" />

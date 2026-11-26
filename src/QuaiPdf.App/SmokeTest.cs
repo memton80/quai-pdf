@@ -128,6 +128,7 @@ internal static class SmokeTest
             await FollowVisiblePageAsync(window, document, hwnd, directory, report);
             await PanelsAsync(window, document, hwnd, directory, report);
             await TextBoxesAsync(window, document, hwnd, directory, report);
+            await HighlightsAsync(window, document, hwnd, directory, report);
 
             // Modifications : rotation, suppression annulée, déplacement.
             document.SetSelection([0]);
@@ -514,6 +515,85 @@ internal static class SmokeTest
         document.IsTextToolActive = false;
         document.SelectTextBox(null);
         report.Add($"Zones de texte : ajout, modification, couleur, déplacement, suppression, annulation ; dessinée par Windows ({before} → {after} pixels sombres) : OK");
+    }
+
+    /// <summary>
+    /// Surligneur : un mot balayé avec l'outil (mêmes appels que la souris), dessiné par le moteur de Windows en couleur
+    /// sans cacher le texte ; puis choisi d'un clic, recoloré, supprimé, rétabli.
+    /// </summary>
+    private static async Task HighlightsAsync(MainWindow window, DocumentViewModel document, IntPtr hwnd, string directory, List<string> report)
+    {
+        var page = document.TextPage(0) ?? throw new InvalidOperationException("Texte de la page 1 illisible.");
+        var start = page.AllText().IndexOf("Bonjour", StringComparison.Ordinal);
+        Check(start >= 0, "mot « Bonjour » introuvable sur la page 1");
+        var word = page.Rects(start, start + 6);
+        Check(word.Count > 0, "rectangles du mot « Bonjour »");
+        var area = new PdfRect(word.Min(r => r.X), word.Min(r => r.Y), word.Max(r => r.Right) - word.Min(r => r.X), word.Max(r => r.Bottom) - word.Min(r => r.Y));
+        var center = new PdfPoint(area.X + (area.Width / 2), area.Y + (area.Height / 2));
+        var (darkBefore, tintBefore) = await InkAndTintAsync(document, 0, area);
+
+        document.ClearTextSelection();
+        document.IsHighlightToolActive = true;
+        Check(document.IsHighlightToolActive, "outil « Surligner » actif");
+        Check(document.BeginTextSelection(0, new PdfPoint(area.X + 1, center.Y), extend: false), "appui sur le mot");
+        document.ExtendTextSelection(0, new PdfPoint(area.Right - 1, center.Y));
+        Check(await WithTimeout(document.CompleteTextSelectionAsync(0, new PdfPoint(area.Right - 1, center.Y)), "surlignage"), "mot balayé surligné");
+        var highlight = document.Highlights(0);
+        Check(highlight.Count == 1, $"{highlight.Count} surlignage(s) au lieu d'un");
+
+        // Le moteur de Windows dessine l'apparence : le papier prend la couleur, l'encre reste noire (fusion « produit »).
+        var (darkAfter, tintAfter) = await InkAndTintAsync(document, 0, area);
+        Check(tintAfter > tintBefore + 50, $"Windows ne colore pas le mot ({tintBefore} → {tintAfter} pixels jaunes)");
+        Check(darkAfter >= darkBefore * 0.8, $"le surlignage cache le texte ({darkBefore} → {darkAfter} pixels sombres)");
+        await WaitForAsync(() => window.View.RenderedPageCount > 0, "pages redessinées");
+        await Task.Delay(800);
+        await CaptureAsync(hwnd, directory, "2i-surlignage.png", report);
+
+        // Un clic sur le surlignage le choisit ; couleur, suppression, annulation.
+        document.IsHighlightToolActive = false;
+        document.BeginTextSelection(0, center, extend: false);
+        await document.CompleteTextSelectionAsync(0, center);
+        Check(document.SelectedHighlight is not null, "surlignage choisi d'un clic");
+        await WaitForAsync(() => window.View.TextBoxOutlineCount > 0, "contour du surlignage choisi");
+        await document.SetHighlightColorAsync(document.HighlightColors[1].Color);
+        Check(document.Highlights(0).Count == 1 && document.SelectedHighlight is not null, "surlignage recoloré et toujours choisi");
+        await Task.Delay(800);
+        await CaptureAsync(hwnd, directory, "2j-surlignage-vert.png", report);
+
+        await document.DeleteSelectedHighlightCommand.ExecuteAsync(null);
+        Check(document.Highlights(0).Count == 0, "suppression du surlignage");
+        await document.UndoCommand.ExecuteAsync(null);
+        Check(document.Highlights(0).Count == 1, "annulation de la suppression du surlignage");
+        document.SelectHighlight(null);
+        report.Add($"Surligneur : mot balayé, choisi, recoloré, supprimé, rétabli ; dessiné par Windows ({tintBefore} → {tintAfter} pixels jaunes, {darkBefore} → {darkAfter} pixels d'encre) : OK");
+    }
+
+    /// <summary>Pixels d'encre et pixels jaunes (rouge et vert hauts, bleu bas) d'un rectangle, dessiné par Windows.</summary>
+    private static async Task<(int Dark, int Yellow)> InkAndTintAsync(DocumentViewModel document, int page, PdfRect area)
+    {
+        var rendered = document.Rendered as WindowsRenderedPdf ?? throw new InvalidOperationException("Moteur d'affichage inattendu.");
+        var width = (uint)Math.Round(document.Pages[page].Size.Width);
+        var pixels = await rendered.RenderPixelsAsync(page, width) ?? throw new InvalidOperationException("Page non dessinée.");
+        var scale = pixels.Width / document.Pages[page].Size.Width;
+        int dark = 0, yellow = 0;
+        for (var y = (int)(area.Y * scale); y < Math.Min(pixels.Height, (int)(area.Bottom * scale)); y++)
+        {
+            for (var x = (int)(area.X * scale); x < Math.Min(pixels.Width, (int)(area.Right * scale)); x++)
+            {
+                var i = ((y * pixels.Width) + x) * 4;
+                var (b, g, r) = (pixels.Bgra[i], pixels.Bgra[i + 1], pixels.Bgra[i + 2]);
+                if (b + g + r < 3 * 160)
+                {
+                    dark++;
+                }
+                else if (r > 200 && g > 200 && b < 160)
+                {
+                    yellow++;
+                }
+            }
+        }
+
+        return (dark, yellow);
     }
 
     private static PdfTextBox Assert1(IReadOnlyList<PdfTextBox> boxes, string what)

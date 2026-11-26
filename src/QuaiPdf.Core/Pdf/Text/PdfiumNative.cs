@@ -164,6 +164,30 @@ internal static class PdfiumNative
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool FPDFAnnot_HasKey(IntPtr annotation, [MarshalAs(UnmanagedType.LPUTF8Str)] string key);
 
+    /// <summary>Sous-type <c>/Highlight</c> (<c>FPDF_ANNOT_HIGHLIGHT</c>).</summary>
+    public const int AnnotHighlight = 9;
+
+    /// <summary>Quadrilatère d'un surlignage (<c>FS_QUADPOINTSF</c>), dans le repère du PDF.</summary>
+    [StructLayout(LayoutKind.Sequential)]
+    public struct FsQuadPointsF
+    {
+        public float X1;
+        public float Y1;
+        public float X2;
+        public float Y2;
+        public float X3;
+        public float Y3;
+        public float X4;
+        public float Y4;
+    }
+
+    [DllImport(Library)]
+    public static extern nuint FPDFAnnot_CountAttachmentPoints(IntPtr annotation);
+
+    [DllImport(Library)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool FPDFAnnot_GetAttachmentPoints(IntPtr annotation, nuint index, out FsQuadPointsF quad);
+
     /// <summary>Valeur texte en UTF-16LE, zéro final compris ; retourne la taille nécessaire en octets.</summary>
     [DllImport(Library)]
     public static extern CULong FPDFAnnot_GetStringValue(IntPtr annotation, [MarshalAs(UnmanagedType.LPUTF8Str)] string key, [Out] byte[]? buffer, CULong length);

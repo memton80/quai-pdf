@@ -177,6 +177,42 @@
                             </MenuFlyout>
                         </DropDownButton.Flyout>
                     </DropDownButton>
+
+                    <!-- Surligneur : l'outil, puis la couleur (et la suppression du surlignage choisi). -->
+                    <Rectangle Style="{StaticResource ToolbarSeparatorStyle}" />
+                    <ToggleButton
+                        AutomationProperties.Name="{l:Str Key=Toolbar_Highlight}"
+                        IsChecked="{x:Bind ViewModel.IsHighlightToolActive, Mode=TwoWay}"
+                        IsEnabled="{x:Bind ViewModel.CanEdit, Mode=OneWay}"
+                        Style="{StaticResource ToolbarToggleButtonStyle}"
+                        ToolTipService.ToolTip="{l:Str Key=Toolbar_HighlightTooltip}">
+                        <StackPanel Style="{StaticResource ToolbarButtonContentStyle}">
+                            <FontIcon Glyph="&#xE7E6;" Style="{StaticResource ToolbarIconStyle}" />
+                            <TextBlock Text="{l:Str Key=Toolbar_Highlight}" />
+                        </StackPanel>
+                    </ToggleButton>
+                    <DropDownButton
+                        AutomationProperties.Name="{l:Str Key=Toolbar_HighlightColor}"
+                        IsEnabled="{x:Bind ViewModel.CanEdit, Mode=OneWay}"
+                        Style="{StaticResource TextStyleButtonStyle}"
+                        ToolTipService.ToolTip="{l:Str Key=Toolbar_HighlightColor}">
+                        <Rectangle Fill="{x:Bind ui:UiHelpers.Brush(ViewModel.HighlightColor), Mode=OneWay}" Style="{StaticResource HighlightSwatchStyle}" />
+                        <DropDownButton.Flyout>
+                            <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                                <MenuFlyoutItem Click="OnHighlightColorClick" Tag="0" Text="{l:Str Key=HighlightColor_Yellow}" />
+                                <MenuFlyoutItem Click="OnHighlightColorClick" Tag="1" Text="{l:Str Key=HighlightColor_Green}" />
+                                <MenuFlyoutItem Click="OnHighlightColorClick" Tag="2" Text="{l:Str Key=HighlightColor_Blue}" />
+                                <MenuFlyoutItem Click="OnHighlightColorClick" Tag="3" Text="{l:Str Key=HighlightColor_Pink}" />
+                                <MenuFlyoutItem Click="OnHighlightColorClick" Tag="4" Text="{l:Str Key=HighlightColor_Orange}" />
+                                <MenuFlyoutSeparator />
+                                <MenuFlyoutItem Command="{x:Bind ViewModel.DeleteSelectedHighlightCommand}" Text="{l:Str Key=Highlight_Delete}">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="&#xE74D;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                            </MenuFlyout>
+                        </DropDownButton.Flyout>
+                    </DropDownButton>
                     </StackPanel>
                     <Button
                         AutomationProperties.Name="{l:Str Key=Toolbar_More}"
@@ -520,6 +556,16 @@
                                     <FontIcon Glyph="&#xE8C8;" />
                                 </MenuFlyoutItem.Icon>
                             </MenuFlyoutItem>
+                            <MenuFlyoutItem Command="{x:Bind ViewModel.HighlightSelectedTextCommand}" Text="{l:Str Key=Highlight_Selection}">
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon Glyph="&#xE7E6;" />
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutItem Command="{x:Bind ViewModel.DeleteSelectedHighlightCommand}" Text="{l:Str Key=Highlight_Delete}">
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon Glyph="&#xE74D;" />
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
                             <MenuFlyoutItem Command="{x:Bind ViewModel.SelectAllTextCommand}" Text="{l:Str Key=Text_SelectAll}">
                                 <MenuFlyoutItem.Icon>
                                     <FontIcon Glyph="&#xE8B3;" />
@@ -625,6 +671,11 @@
                     Style="{StaticResource StatusTextStyle}"
                     Text="{l:Str Key=Status_TextTool}"
                     Visibility="{x:Bind ui:UiHelpers.VisibleIf(ViewModel.IsTextToolActive), Mode=OneWay}" />
+                <Rectangle Style="{StaticResource StatusSeparatorStyle}" Visibility="{x:Bind ui:UiHelpers.VisibleIf(ViewModel.IsHighlightToolActive), Mode=OneWay}" />
+                <TextBlock
+                    Style="{StaticResource StatusTextStyle}"
+                    Text="{l:Str Key=Status_HighlightTool}"
+                    Visibility="{x:Bind ui:UiHelpers.VisibleIf(ViewModel.IsHighlightToolActive), Mode=OneWay}" />
             </StackPanel>
 
             <StackPanel Grid.Column="3" Style="{StaticResource StatusGroupStyle}">

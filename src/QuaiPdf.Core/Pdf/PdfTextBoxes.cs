@@ -129,30 +129,36 @@ public static class PdfTextBoxes
                 throw new InvalidOperationException("L'auteur de cette zone de texte l'a verrouillée.");
             }
 
-            var annotations = Annotations(document, pdfPage, create: false)!;
-            var removed = new HashSet<PdfDictionary>(ReferenceEqualityComparer.Instance) { annotation };
-            if (Resolve(annotation.Elements["/Popup"]) is PdfDictionary popup)
-            {
-                removed.Add(popup);
-            }
-
-            foreach (var item in annotations.Elements.ToList())
-            {
-                if (Resolve(item) is PdfDictionary other && Resolve(other.Elements["/IRT"]) is PdfDictionary parent
-                    && ReferenceEquals(parent, annotation))
-                {
-                    removed.Add(other);
-                }
-            }
-
-            for (var i = annotations.Elements.Count - 1; i >= 0; i--)
-            {
-                if (Resolve(annotations.Elements[i]) is PdfDictionary item && removed.Contains(item))
-                {
-                    annotations.Elements.RemoveAt(i);
-                }
-            }
+            Remove(document, pdfPage, annotation);
         });
+    }
+
+    /// <summary>Retire une annotation de la page, avec sa bulle (<c>/Popup</c>) et les réponses qui s'y rattachent (<c>/IRT</c>).</summary>
+    internal static void Remove(PdfDocument document, PdfPage pdfPage, PdfDictionary annotation)
+    {
+        var annotations = Annotations(document, pdfPage, create: false)!;
+        var removed = new HashSet<PdfDictionary>(ReferenceEqualityComparer.Instance) { annotation };
+        if (Resolve(annotation.Elements["/Popup"]) is PdfDictionary popup)
+        {
+            removed.Add(popup);
+        }
+
+        foreach (var item in annotations.Elements.ToList())
+        {
+            if (Resolve(item) is PdfDictionary other && Resolve(other.Elements["/IRT"]) is PdfDictionary parent
+                && ReferenceEquals(parent, annotation))
+            {
+                removed.Add(other);
+            }
+        }
+
+        for (var i = annotations.Elements.Count - 1; i >= 0; i--)
+        {
+            if (Resolve(annotations.Elements[i]) is PdfDictionary item && removed.Contains(item))
+            {
+                annotations.Elements.RemoveAt(i);
+            }
+        }
     }
 
     // ----- Contenu et apparence -----
@@ -303,7 +309,7 @@ public static class PdfTextBoxes
     private static string ReadText(PdfDictionary annotation) =>
         annotation.Elements["/Contents"] is PdfString contents ? contents.Value : string.Empty;
 
-    private static PdfPage PageAt(PdfDocument document, int page)
+    internal static PdfPage PageAt(PdfDocument document, int page)
     {
         if (page < 0 || page >= document.PageCount)
         {
@@ -314,7 +320,7 @@ public static class PdfTextBoxes
     }
 
     /// <summary>Liste <c>/Annots</c> de la page (directe ou référencée), créée au besoin.</summary>
-    private static PdfArray? Annotations(PdfDocument document, PdfPage page, bool create)
+    internal static PdfArray? Annotations(PdfDocument document, PdfPage page, bool create)
     {
         if (Resolve(page.Elements["/Annots"]) is PdfArray annotations)
         {
@@ -357,14 +363,14 @@ public static class PdfTextBoxes
         return new PdfRect(x * PdfPageSize.PixelsPerPoint, y * PdfPageSize.PixelsPerPoint, width * PdfPageSize.PixelsPerPoint, height * PdfPageSize.PixelsPerPoint);
     }
 
-    private static PdfItem? Resolve(PdfItem? item) => item is PdfReference reference ? reference.Value : item;
+    internal static PdfItem? Resolve(PdfItem? item) => item is PdfReference reference ? reference.Value : item;
 
-    private static PdfArray Numbers(PdfDocument document, params double[] values) =>
+    internal static PdfArray Numbers(PdfDocument document, params double[] values) =>
         new(document, [.. values.Select(v => (PdfItem)new PdfReal(Math.Round(v, 4)))]);
 
-    private static string DateString() => "D:" + DateTime.UtcNow.ToString("yyyyMMddHHmmss", CultureInfo.InvariantCulture) + "Z";
+    internal static string DateString() => "D:" + DateTime.UtcNow.ToString("yyyyMMddHHmmss", CultureInfo.InvariantCulture) + "Z";
 
-    private static string Invariant(FormattableString text) => text.ToString(CultureInfo.InvariantCulture);
+    internal static string Invariant(FormattableString text) => text.ToString(CultureInfo.InvariantCulture);
 }
 
 /// <summary>

@@ -834,6 +834,7 @@ public sealed partial class DocumentViewModel : ObservableObject, IDisposable
     {
         ForgetSearch();
         IsTextToolActive = false;
+        IsHighlightToolActive = false;
         ResetText();
         _history.Clear();
         _fitWidthPending = false;
@@ -913,6 +914,7 @@ public sealed partial class DocumentViewModel : ObservableObject, IDisposable
         SelectAllTextCommand.NotifyCanExecuteChanged();
         SearchCommand.NotifyCanExecuteChanged();
         DeleteSelectedTextBoxCommand.NotifyCanExecuteChanged();
+        RefreshHighlightCommands();
         RefreshTargetCommands();
     }
 }

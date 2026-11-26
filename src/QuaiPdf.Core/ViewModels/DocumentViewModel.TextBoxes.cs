@@ -221,10 +221,20 @@ public sealed partial class DocumentViewModel
         {
             IsTextToolActive = false;
         }
+        else if (value)
+        {
+            // Un seul outil à la fois.
+            IsHighlightToolActive = false;
+        }
     }
 
     partial void OnSelectedTextBoxChanged(PdfTextBox? value)
     {
+        if (value is not null)
+        {
+            SelectHighlight(null);
+        }
+
         DeleteSelectedTextBoxCommand.NotifyCanExecuteChanged();
         TextBoxesChanged?.Invoke(this, EventArgs.Empty);
     }

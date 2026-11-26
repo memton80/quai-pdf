@@ -103,6 +103,7 @@ public sealed partial class DocumentView : UserControl
         ViewModel.SelectionFollowedPage += (_, _) => OnSelectionFollowedPage();
         ViewModel.TextSelectionChanged += (_, _) => DrawVisibleSelections();
         ViewModel.TextBoxesChanged += (_, _) => DrawVisibleTextBoxes();
+        ViewModel.HighlightsChanged += (_, _) => DrawVisibleTextBoxes();
         ViewModel.PropertyChanged += OnViewModelPropertyChanged;
         Settings.PropertyChanged += OnSettingsPropertyChanged;
 
@@ -486,7 +487,13 @@ public sealed partial class DocumentView : UserControl
         var point = e.GetCurrentPoint(PagesRepeater);
         if (!point.Properties.IsLeftButtonPressed || !ViewModel.HasDocument)
         {
-            // Clic droit : la sélection reste, le menu « Copier » s'ouvre.
+            // Clic droit : la sélection reste, le menu « Copier » s'ouvre ; sans texte sélectionné, le surlignage sous
+            // le pointeur est choisi (« Supprimer le surlignage »).
+            if (point.Properties.IsRightButtonPressed && !ViewModel.HasTextSelection && PageUnder(e) is { } target)
+            {
+                ViewModel.SelectHighlight(ViewModel.HighlightAt(target.Index, target.Point));
+            }
+
             return;
         }
 
@@ -510,6 +517,11 @@ public sealed partial class DocumentView : UserControl
         {
             _selectingText = PagesRepeater.CapturePointer(e.Pointer);
             e.Handled = true;
+        }
+        else
+        {
+            // Page sans texte (scan) : un clic peut quand même choisir un surlignage posé par un autre logiciel.
+            ViewModel.SelectHighlight(ViewModel.HighlightAt(hit.Index, hit.Point));
         }
     }
 
@@ -566,6 +578,23 @@ public sealed partial class DocumentView : UserControl
         {
             _selectingText = false;
             PagesRepeater.ReleasePointerCapture(e.Pointer);
+            if (PageUnder(e) is { } hit)
+            {
+                _ = CompleteTextSelectionAsync(hit.Index, hit.Point);
+            }
+        }
+    }
+
+    /// <summary>Bouton relâché : avec le surligneur, le texte balayé est surligné ; un simple clic choisit un surlignage.</summary>
+    private async Task CompleteTextSelectionAsync(int page, PdfPoint point)
+    {
+        try
+        {
+            await ViewModel.CompleteTextSelectionAsync(page, point);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Surlignage interrompu");
         }
     }
 
@@ -581,6 +610,10 @@ public sealed partial class DocumentView : UserControl
             else
             {
                 ViewModel.SelectWordAt(hit.Index, hit.Point);
+                if (ViewModel.IsHighlightToolActive)
+                {
+                    _ = CompleteTextSelectionAsync(hit.Index, hit.Point);
+                }
             }
 
             e.Handled = true;
@@ -590,8 +623,21 @@ public sealed partial class DocumentView : UserControl
     private void OnScrollerKeyDown(object sender, KeyRoutedEventArgs e)
     {
         var box = ViewModel.SelectedTextBox;
+        var highlight = ViewModel.SelectedHighlight;
         switch (e.Key)
         {
+            case VirtualKey.Delete when highlight is { CanEdit: true } && ViewModel.CanEdit:
+                _ = ViewModel.DeleteSelectedHighlightCommand.ExecuteAsync(null);
+                e.Handled = true;
+                break;
+            case VirtualKey.Escape when highlight is not null:
+                ViewModel.SelectHighlight(null);
+                e.Handled = true;
+                break;
+            case VirtualKey.Escape when ViewModel.IsHighlightToolActive:
+                ViewModel.IsHighlightToolActive = false;
+                e.Handled = true;
+                break;
             case VirtualKey.Delete when box is { CanDelete: true } && ViewModel.CanEdit:
                 _ = ViewModel.DeleteSelectedTextBoxCommand.ExecuteAsync(null);
                 e.Handled = true;
@@ -1213,6 +1259,14 @@ public sealed partial class DocumentView : UserControl
             {
                 AddOutline(layer, hover.Area, "TextBoxHoverStyle");
             }
+
+            if (ViewModel.SelectedHighlight is { } highlight && highlight.Page == index)
+            {
+                foreach (var area in highlight.Areas)
+                {
+                    AddOutline(layer, area, "HighlightSelectionStyle");
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -1366,6 +1420,22 @@ public sealed partial class DocumentView : UserControl
         catch (Exception ex)
         {
             _logger.LogError(ex, "Taille du texte non appliquée");
+        }
+    }
+
+    private async void OnHighlightColorClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (int.TryParse((sender as FrameworkElement)?.Tag as string, NumberStyles.Integer, CultureInfo.InvariantCulture, out var index)
+                && index >= 0 && index < ViewModel.HighlightColors.Count)
+            {
+                await ViewModel.SetHighlightColorAsync(ViewModel.HighlightColors[index].Color);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Couleur du surlignage non appliquée");
         }
     }
 

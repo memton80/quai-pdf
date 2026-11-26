@@ -82,6 +82,7 @@ public sealed partial class DocumentViewModel
     /// </summary>
     public bool BeginTextSelection(int page, PdfPoint point, bool extend)
     {
+        SelectHighlight(null);
         if (TextPage(page) is not { CharCount: > 0 } textPage)
         {
             ClearTextSelection();
@@ -204,6 +205,7 @@ public sealed partial class DocumentViewModel
         OnPropertyChanged(nameof(TextSelection));
         OnPropertyChanged(nameof(HasTextSelection));
         CopyTextCommand.NotifyCanExecuteChanged();
+        HighlightSelectedTextCommand.NotifyCanExecuteChanged();
         TextSelectionChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -215,6 +217,7 @@ public sealed partial class DocumentViewModel
     {
         ResetPanels();
         ResetTextBoxes();
+        ResetHighlights();
         _text?.Dispose();
         _text = null;
         _textUnavailable = false;
